@@ -51,12 +51,16 @@ final class AppCoordinator: NSObject {
 
     func showCard() {
         cardController.show()
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     func showEditor() {
+        if !editorWindow.isVisible {
+            editorWindow.center()
+        }
         editorWindow.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        editorWindow.orderFrontRegardless()
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func showCardFromMenu() {
@@ -79,6 +83,9 @@ final class AppCoordinator: NSObject {
             defer: false
         )
         window.title = "SideNotes 编辑"
+        window.isReleasedWhenClosed = false
+        window.level = .floating
+        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         window.center()
         window.contentView = NSHostingView(rootView: EditorView(viewModel: viewModel))
         return window
