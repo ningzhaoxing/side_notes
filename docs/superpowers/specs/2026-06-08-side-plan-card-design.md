@@ -42,6 +42,15 @@ The card includes a small control row:
 
 When pinned, the card stays visible as a floating window above normal app windows. The app remembers its pinned state, side, size, position, and currently visible side.
 
+### Appearance Settings
+
+The floating card supports lightweight visual customization:
+
+- Card opacity.
+- Card corner radius.
+
+These settings apply to the side card in both front and back states. The editor window exposes simple controls for them, such as sliders or steppers. Version 1 should keep the controls constrained to practical ranges so the card remains readable and usable.
+
 ### Front Side: Daily Plan
 
 The front side shows the current daily plan. This is not a "three big things" view. It is a user-authored plan.
@@ -179,6 +188,8 @@ Fields:
 - `cardFrame`
 - `editorFrame`
 - `visibleSide`
+- `cardOpacity`
+- `cardCornerRadius`
 - `lastArchiveDate`
 
 ## Architecture
@@ -207,6 +218,7 @@ SwiftUI view for the front and back of the card:
 - Front renders daily groups and task checkboxes.
 - Back renders long-term areas and items.
 - Handles card flip animation.
+- Applies card opacity and corner radius settings.
 - Sends user actions to view models.
 
 ### EditorWindow
@@ -244,6 +256,7 @@ If saving the archive fails, the service must not clear the current daily plan.
 - Database write failures show an error in the editor or card instead of silently losing data.
 - Archive failure leaves the current daily plan untouched.
 - If a restored card frame is outside all connected displays, the card returns to the main display's right edge.
+- If appearance settings are missing or outside valid ranges, the app uses readable defaults.
 - If edge triggering is unreliable on a display setup, opening the app should still expose the editor and a way to show the card.
 - Empty states should be explicit: no daily groups, no long-term areas, and no archive history each get clear empty views.
 
@@ -271,12 +284,14 @@ If saving the archive fails, the service must not clear the current daily plan.
 - Persists pinned state.
 - Persists visible side.
 - Persists and validates window frames.
+- Persists card opacity and corner radius.
 
 ### Manual Verification
 
 - Card slides out from the configured side edge.
 - Card can be pinned and unpinned.
 - Card flips between daily plan and long-term plan.
+- Card opacity and corner radius settings update the floating card and persist after relaunch.
 - Task completion toggles persist.
 - Editor window opens and edits are reflected in the card.
 - Archive creates a history entry and starts a blank current plan.
@@ -287,6 +302,7 @@ If saving the archive fails, the service must not clear the current daily plan.
 - The app launches as a native macOS app.
 - Moving the mouse to the configured edge can reveal the card.
 - The card can be pinned as a floating window.
+- The card supports user-configurable opacity and corner radius.
 - The front side shows custom daily groups and checkable tasks.
 - The back side shows long-term areas and items.
 - The card can flip between front and back.
