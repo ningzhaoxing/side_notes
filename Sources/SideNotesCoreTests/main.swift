@@ -132,6 +132,23 @@ func testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan() throws {
     try expect(result.current.groups.isEmpty, "new current plan groups")
 }
 
+func testSingleInstanceGuardRequiresExclusiveLock() throws {
+    let url = try temporaryDatabaseURL("sidenotes.lock")
+    var firstGuard: SingleInstanceGuard? = try SingleInstanceGuard(lockURL: url)
+    try expect(firstGuard != nil, "first guard should acquire the lock")
+
+    do {
+        _ = try SingleInstanceGuard(lockURL: url)
+        throw TestFailure(description: "second guard should not acquire an active lock")
+    } catch SingleInstanceGuard.Error.alreadyRunning {
+        // Expected: a live SideNotes instance already owns this lock.
+    }
+
+    firstGuard = nil
+    let replacementGuard = try SingleInstanceGuard(lockURL: url)
+    _ = replacementGuard
+}
+
 func temporaryDatabaseURL(_ name: String) throws -> URL {
     let directory = URL(fileURLWithPath: NSTemporaryDirectory())
         .appendingPathComponent("SideNotesCoreTests-\(UUID().uuidString)", isDirectory: true)
@@ -261,6 +278,7 @@ let tests: [(String, () throws -> Void)] = [
     ("card size updates clamp to readable ranges", testCardSizeUpdatesClampToReadableRanges),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
+    ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),
     ("plan store persists daily groups, tasks, and settings", testPlanStorePersistsDailyGroupsTasksAndSettings),
     ("plan store persists long-term areas and items", testPlanStorePersistsLongTermAreasAndItems),
     ("plan store archives current plan and searches history", testPlanStoreArchivesCurrentPlanAndSearchesHistory),

@@ -3,6 +3,7 @@ import SideNotesCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var coordinator: AppCoordinator?
+    private var instanceGuard: SingleInstanceGuard?
     private var didStart = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -10,6 +11,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         didStart = true
         NSApp.setActivationPolicy(.accessory)
         do {
+            if ProcessInfo.processInfo.environment["SIDE_NOTES_DISABLE_SINGLE_INSTANCE"] != "1" {
+                do {
+                    instanceGuard = try SingleInstanceGuard()
+                } catch SingleInstanceGuard.Error.alreadyRunning {
+                    DistributedNotificationCenter.default().post(
+                        name: AppCoordinator.showCardNotificationName,
+                        object: nil
+                    )
+                    NSApp.terminate(nil)
+                    return
+                }
+            }
+
             let store = try PlanStore()
             let coordinator = AppCoordinator(store: store)
             self.coordinator = coordinator

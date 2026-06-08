@@ -40,7 +40,7 @@ The install script builds the app and copies it to:
 ~/Applications/SideNotes.app
 ```
 
-The app runs as a menu-bar accessory and opens with the card pinned by default, so it is visible immediately after launch. Click `取消固定` to fold it into the side edge immediately. When hidden, a narrow drawer handle stays on the screen edge; click the handle or move the mouse to the edge to reveal the card again. Use the `SideNotes` menu-bar item to show the card or open the editor.
+The app runs as a menu-bar accessory and opens with the card pinned by default, so it is visible immediately after launch. Click `取消固定` to fold it into the side edge immediately. When hidden, a narrow drawer handle stays on the screen edge; click the handle or move the mouse to the edge to reveal the card again. SideNotes keeps a single running instance; opening another copy focuses the existing card instead of creating a second floating window. Use the `SideNotes` menu-bar item to show the card or open the editor.
 
 ## Use
 

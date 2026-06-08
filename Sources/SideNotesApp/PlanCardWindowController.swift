@@ -106,7 +106,7 @@ final class PlanCardWindowController: NSObject {
     }
 
     private func installBookmarkView() {
-        window.contentView = DrawerHandleView(frame: NSRect(x: 0, y: 0, width: 38, height: 112)) { [weak self] in
+        window.contentView = DrawerHandleButton(frame: NSRect(x: 0, y: 0, width: 38, height: 112)) { [weak self] in
             self?.show()
         }
     }
@@ -164,7 +164,7 @@ private final class CardWindow: NSWindow {
     override var canBecomeMain: Bool { false }
 }
 
-private final class DrawerHandleView: NSView {
+private final class DrawerHandleButton: NSButton {
     private let onActivate: () -> Void
     private var trackingArea: NSTrackingArea?
 
@@ -172,8 +172,14 @@ private final class DrawerHandleView: NSView {
         self.onActivate = onActivate
         super.init(frame: frame)
         wantsLayer = true
+        title = ""
+        isBordered = false
+        bezelStyle = .regularSquare
+        setButtonType(.momentaryChange)
+        target = self
+        action = #selector(activate)
+        sendAction(on: [.leftMouseDown])
         toolTip = "显示 SideNotes 计划卡片"
-        setAccessibilityRole(.button)
         setAccessibilityLabel("计划")
     }
 
@@ -200,11 +206,16 @@ private final class DrawerHandleView: NSView {
         true
     }
 
-    override func mouseEntered(with event: NSEvent) {
+    override func accessibilityPerformPress() -> Bool {
+        onActivate()
+        return true
+    }
+
+    @objc private func activate() {
         onActivate()
     }
 
-    override func mouseDown(with event: NSEvent) {
+    override func mouseEntered(with event: NSEvent) {
         onActivate()
     }
 

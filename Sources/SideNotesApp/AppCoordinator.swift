@@ -4,6 +4,8 @@ import SideNotesCore
 
 @MainActor
 final class AppCoordinator: NSObject {
+    static let showCardNotificationName = Notification.Name("com.ningzhaoxing.sidenotes.showCard")
+
     private let viewModel: PlanViewModel
     private let cardController: PlanCardWindowController
     private lazy var editorWindow: NSWindow = makeEditorWindow()
@@ -25,6 +27,16 @@ final class AppCoordinator: NSObject {
         cardController.onSettings = { [weak self] in
             self?.showEditor(tab: .appearance)
         }
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(showCardFromDistributedNotification(_:)),
+            name: Self.showCardNotificationName,
+            object: nil
+        )
+    }
+
+    deinit {
+        DistributedNotificationCenter.default().removeObserver(self)
     }
 
     func start() {
@@ -75,6 +87,10 @@ final class AppCoordinator: NSObject {
     }
 
     @objc private func showCardFromMenu() {
+        showCard()
+    }
+
+    @objc private func showCardFromDistributedNotification(_ notification: Notification) {
         showCard()
     }
 
