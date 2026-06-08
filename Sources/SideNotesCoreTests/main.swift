@@ -116,12 +116,89 @@ func testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan() throws {
     try expect(result.current.groups.isEmpty, "new current plan groups")
 }
 
+func temporaryDatabaseURL(_ name: String) throws -> URL {
+    let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("SideNotesCoreTests-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    return directory.appendingPathComponent(name)
+}
+
+func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+
+    let group = try store.addDailyGroup(title: "Work")
+    let task = try store.addDailyTask(groupID: group.id, title: "Prepare plan")
+    _ = try store.toggleTask(id: task.id)
+    var settings = try store.loadSettings()
+    settings.isPinned = true
+    settings.visibleSide = .back
+    settings.cardOpacity = 0.52
+    settings.cardCornerRadius = 36
+    try store.saveSettings(settings)
+
+    let reopened = try PlanStore(databaseURL: url)
+    let plan = try reopened.loadDailyPlan()
+    let reopenedSettings = try reopened.loadSettings()
+
+    try expectEqual(plan.groups.count, 1, "daily group count")
+    try expectEqual(plan.groups[0].title, "Work", "daily group title")
+    try expectEqual(plan.groups[0].tasks.count, 1, "daily task count")
+    try expectEqual(plan.groups[0].tasks[0].title, "Prepare plan", "daily task title")
+    try expect(plan.groups[0].tasks[0].isCompleted, "daily task completion persisted")
+    try expect(reopenedSettings.isPinned, "pinned state persisted")
+    try expectEqual(reopenedSettings.visibleSide, .back, "visible side persisted")
+    try expectEqual(reopenedSettings.cardOpacity, 0.52, accuracy: 0.001, "opacity persisted")
+    try expectEqual(reopenedSettings.cardCornerRadius, 36, accuracy: 0.001, "corner radius persisted")
+}
+
+func testPlanStorePersistsLongTermAreasAndItems() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+
+    let reading = try store.addLongTermArea(title: "Reading")
+    _ = try store.addLongTermItem(areaID: reading.id, title: "Read Designing Your Life")
+    let english = try store.addLongTermArea(title: "English")
+    _ = try store.addLongTermItem(areaID: english.id, title: "Listen 20 minutes daily")
+
+    let reopened = try PlanStore(databaseURL: url)
+    let areas = try reopened.loadLongTermAreas()
+
+    try expectEqual(areas.map { $0.title }, ["Reading", "English"], "long-term area order")
+    try expectEqual(areas[0].items.map { $0.title }, ["Read Designing Your Life"], "reading item")
+    try expectEqual(areas[1].items.map { $0.title }, ["Listen 20 minutes daily"], "english item")
+}
+
+func testPlanStoreArchivesCurrentPlanAndSearchesHistory() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let group = try store.addDailyGroup(title: "Social")
+    _ = try store.addDailyTask(groupID: group.id, title: "Message Alex")
+    _ = try store.addDailyTask(groupID: group.id, title: "Book dinner")
+
+    let archive = try store.archiveCurrentPlan(now: Date(timeIntervalSince1970: 1_700_000_000))
+    let current = try store.loadDailyPlan()
+    let archives = try store.loadArchives()
+    let searchResults = try store.searchArchives(query: "alex")
+
+    try expect(current.groups.isEmpty, "current plan cleared after archive")
+    try expectEqual(archives.count, 1, "archive count after store archive")
+    try expectEqual(archives[0].id, archive.id, "stored archive id")
+    try expectEqual(archives[0].groupsSnapshot[0].title, "Social", "archive group title")
+    try expectEqual(archives[0].groupsSnapshot[0].tasks.map { $0.title }, ["Message Alex", "Book dinner"], "archive task order")
+    try expectEqual(searchResults.count, 1, "archive search count")
+    try expectEqual(searchResults[0].id, archive.id, "archive search result id")
+}
+
 let tests: [(String, () throws -> Void)] = [
     ("default settings are readable and usable", testDefaultSettingsAreReadableAndUsable),
     ("appearance settings clamp to readable ranges", testAppearanceSettingsClampToReadableRanges),
     ("window frame outside screens falls back to default", testWindowFrameOutsideScreensFallsBackToDefault),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
-    ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan)
+    ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
+    ("plan store persists daily groups, tasks, and settings", testPlanStorePersistsDailyGroupsTasksAndSettings),
+    ("plan store persists long-term areas and items", testPlanStorePersistsLongTermAreasAndItems),
+    ("plan store archives current plan and searches history", testPlanStoreArchivesCurrentPlanAndSearchesHistory)
 ]
 
 var failures: [String] = []
