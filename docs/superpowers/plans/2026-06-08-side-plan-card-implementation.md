@@ -4,9 +4,9 @@
 
 **Goal:** Build a directly openable macOS app for a side-triggered, pinnable, two-sided planning card with local persistence, editing, manual archive history, and appearance settings.
 
-**Architecture:** Use a Swift Package so the app can be built with Command Line Tools. Keep testable planning/domain logic in `SideNotesCore`, keep SwiftUI/AppKit runtime code in `SideNotesApp`, and produce a `.app` bundle with a shell script. Persistence uses a local JSON store for the first runnable product because SwiftData requires heavier Xcode integration; the API is isolated behind `PlanStore` so it can be migrated later without rewriting UI.
+**Architecture:** Use a Swift Package so the app can be built with Command Line Tools. Keep testable planning/domain logic in `SideNotesCore`, keep SwiftUI/AppKit runtime code in `SideNotesApp`, and produce a `.app` bundle with a shell script. Persistence uses the system SQLite library through `PlanStore`, which satisfies the local database requirement without needing full Xcode or SwiftData macros.
 
-**Tech Stack:** Swift 6.2, Swift Package Manager, SwiftUI, AppKit, XCTest, local JSON persistence, macOS `.app` bundle packaging.
+**Tech Stack:** Swift 6.2, Swift Package Manager, SwiftUI, AppKit, XCTest, SQLite, macOS `.app` bundle packaging.
 
 ---
 
@@ -14,7 +14,8 @@
 
 - `Package.swift`: Swift package with `SideNotesCore`, `SideNotesApp`, and `SideNotesCoreTests`.
 - `Sources/SideNotesCore/Models.swift`: Codable domain models for daily plan, long-term plan, archives, and app settings.
-- `Sources/SideNotesCore/PlanStore.swift`: File-backed persistence boundary and mutation methods.
+- `Sources/SideNotesCore/SQLiteDatabase.swift`: Small SQLite wrapper for statements, binding, transactions, and schema setup.
+- `Sources/SideNotesCore/PlanStore.swift`: SQLite persistence boundary and mutation methods.
 - `Sources/SideNotesCore/ArchiveService.swift`: Manual archive operation.
 - `Sources/SideNotesCore/SettingsValidator.swift`: Appearance and window-setting validation.
 - `Sources/SideNotesApp/main.swift`: AppKit entrypoint.
@@ -116,12 +117,13 @@ git commit -m "Add manual archive service"
 ## Task 3: Plan Store Persistence
 
 **Files:**
+- Create: `Sources/SideNotesCore/SQLiteDatabase.swift`
 - Create: `Sources/SideNotesCore/PlanStore.swift`
 - Create: `Tests/SideNotesCoreTests/PlanStoreTests.swift`
 
 - [ ] **Step 1: Write failing persistence tests**
 
-Create tests for creating daily groups, adding tasks, toggling completion, adding long-term areas/items, archiving, searching archive text, and round-tripping through disk.
+Create tests for creating daily groups, adding tasks, toggling completion, adding long-term areas/items, archiving, searching archive text, and round-tripping through an on-disk SQLite database.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -131,11 +133,11 @@ Run:
 env CLANG_MODULE_CACHE_PATH=/private/tmp/sidenotes-module-cache swift test --filter PlanStoreTests
 ```
 
-Expected: FAIL because `PlanStore` does not exist yet.
+Expected: FAIL because `PlanStore` and `SQLiteDatabase` do not exist yet.
 
-- [ ] **Step 3: Implement file-backed plan store**
+- [ ] **Step 3: Implement SQLite-backed plan store**
 
-Implement JSON persistence under an injected file URL, with production default in `~/Library/Application Support/SideNotes/store.json`.
+Implement SQLite persistence under an injected database file URL, with production default in `~/Library/Application Support/SideNotes/SideNotes.sqlite`. Use normalized tables for current groups/tasks, long-term areas/items, settings, and archives. Store archive group snapshots as JSON text inside the `archives` table so history cannot be mutated by later current-plan edits.
 
 - [ ] **Step 4: Run tests**
 
@@ -150,7 +152,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add Sources/SideNotesCore/PlanStore.swift Tests/SideNotesCoreTests/PlanStoreTests.swift
+git add Sources/SideNotesCore/SQLiteDatabase.swift Sources/SideNotesCore/PlanStore.swift Tests/SideNotesCoreTests/PlanStoreTests.swift
 git commit -m "Add local plan persistence"
 ```
 
@@ -281,5 +283,5 @@ git commit -m "Add app bundle build and usage docs"
 ## Self-Review
 
 - Spec coverage: side trigger, pinning, card flip, daily custom groups, checkable tasks, long-term areas, editor, manual archive, archive search, local persistence, opacity, corner radius, and app bundle are covered.
-- Known implementation adjustment: the spec named SwiftData, but current machine lacks full Xcode. The implementation uses a local JSON store behind `PlanStore` so the shipped product remains usable and migration stays isolated.
+- Tooling note: SwiftData macros are unavailable in the current Command Line Tools environment, so the implementation uses SQLite through `PlanStore`. This still satisfies the local database requirement.
 - Placeholder scan: no task uses vague future-work markers; each task has concrete files, commands, and expected results.

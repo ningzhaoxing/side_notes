@@ -11,7 +11,7 @@ Build a personal macOS app for keeping a small planning card available on screen
 - Front: the current daily plan, organized by user-defined groups with checkable tasks.
 - Back: long-term planning areas, organized as simple domain lists such as reading, English, social, health, and career.
 
-The app prioritizes quick viewing while working. Editing happens in a separate full editor window. Data is stored locally on the Mac using SwiftData.
+The app prioritizes quick viewing while working. Editing happens in a separate full editor window. Data is stored locally on the Mac using SQLite.
 
 ## Goals
 
@@ -103,7 +103,7 @@ Version 1 archives everything and does not carry unfinished tasks forward. Carry
 
 ## Data Model
 
-Use SwiftData for local persistence.
+Use SQLite for local persistence. The app stores its database under `~/Library/Application Support/SideNotes/SideNotes.sqlite` in production.
 
 ### DailyPlan
 
@@ -235,7 +235,7 @@ Dedicated window for editing:
 
 ### PlanStore
 
-Persistence boundary around SwiftData. UI code should not directly manage database details. It exposes operations for:
+Persistence boundary around SQLite. UI code should not directly manage database details. It exposes operations for:
 
 - Loading current daily plan.
 - Updating groups and tasks.
