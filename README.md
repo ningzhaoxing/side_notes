@@ -2,6 +2,12 @@
 
 SideNotes is a personal macOS planning card. It stays available from the screen edge, can be pinned as a floating card, flips between today's plan and long-term areas, and stores everything locally in SQLite.
 
+Repository:
+
+```text
+git@github.com:ningzhaoxing/side_notes.git
+```
+
 ## Build
 
 ```bash
@@ -18,6 +24,20 @@ Build/SideNotes.app
 
 ```bash
 open Build/SideNotes.app
+```
+
+You can also double-click `Build/SideNotes.app` in Finder.
+
+To keep it as a normal personal app under your user Applications folder:
+
+```bash
+Scripts/install_app.sh
+```
+
+The install script builds the app and copies it to:
+
+```text
+~/Applications/SideNotes.app
 ```
 
 The app runs as a menu-bar accessory. Use the `SideNotes` menu-bar item to show the card or open the editor. Moving the mouse to the right edge of the screen also reveals the card.
