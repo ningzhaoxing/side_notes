@@ -1,5 +1,9 @@
 # Side Plan Card macOS App Design
 
+## Project
+
+- Repository: `git@github.com:ningzhaoxing/side_notes.git`
+
 ## Summary
 
 Build a personal macOS app for keeping a small planning card available on screen. The app is a native SwiftUI macOS application. Its main surface is a side-triggered floating card with two sides:
