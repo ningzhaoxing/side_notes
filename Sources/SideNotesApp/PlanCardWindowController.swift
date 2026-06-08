@@ -13,7 +13,7 @@ final class PlanCardWindowController: NSObject {
 
     init(viewModel: PlanViewModel) {
         self.viewModel = viewModel
-        window = NSWindow(
+        window = CardWindow(
             contentRect: viewModel.settings.cardFrame.nsRect,
             styleMask: [.borderless],
             backing: .buffered,
@@ -33,7 +33,7 @@ final class PlanCardWindowController: NSObject {
         isCollapsed = false
         window.isMovableByWindowBackground = true
         installRootView()
-        setPinned(viewModel.settings.isPinned)
+        window.level = viewModel.settings.isPinned ? .floating : .normal
         window.setFrame(visibleFrame(), display: true, animate: true)
         window.orderFrontRegardless()
     }
@@ -49,6 +49,8 @@ final class PlanCardWindowController: NSObject {
             if isCollapsed {
                 show()
             }
+        } else if window.isVisible, !isCollapsed {
+            showBookmark()
         } else if !window.isVisible {
             showBookmark()
         }
@@ -104,11 +106,9 @@ final class PlanCardWindowController: NSObject {
     }
 
     private func installBookmarkView() {
-        window.contentView = NSHostingView(
-            rootView: SideBookmarkView {
-                self.show()
-            }
-        )
+        window.contentView = DrawerHandleView(frame: NSRect(x: 0, y: 0, width: 38, height: 112)) { [weak self] in
+            self?.show()
+        }
     }
 
     private func visibleFrame() -> NSRect {
@@ -145,8 +145,8 @@ final class PlanCardWindowController: NSObject {
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
         let frame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1_440, height: 900)
-        let width: CGFloat = 34
-        let height: CGFloat = 92
+        let width: CGFloat = 38
+        let height: CGFloat = 112
         let x: CGFloat
         switch viewModel.settings.triggerSide {
         case .right:
@@ -159,33 +159,81 @@ final class PlanCardWindowController: NSObject {
     }
 }
 
-private struct SideBookmarkView: View {
-    let onTap: () -> Void
+private final class CardWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
 
-    var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 4) {
-                Text("◆")
-                    .font(.system(size: 12, weight: .semibold))
-                Text("计划")
-                    .font(.system(size: 12, weight: .semibold))
-                    .fixedSize()
-            }
-            .foregroundStyle(.primary)
-            .frame(width: 34, height: 92)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.primary.opacity(0.16), lineWidth: 1)
+private final class DrawerHandleView: NSView {
+    private let onActivate: () -> Void
+    private var trackingArea: NSTrackingArea?
+
+    init(frame: NSRect, onActivate: @escaping () -> Void) {
+        self.onActivate = onActivate
+        super.init(frame: frame)
+        wantsLayer = true
+        toolTip = "显示 SideNotes 计划卡片"
+        setAccessibilityRole(.button)
+        setAccessibilityLabel("计划")
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func updateTrackingAreas() {
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.activeAlways, .mouseEnteredAndExited, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        trackingArea = area
+        super.updateTrackingAreas()
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        onActivate()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onActivate()
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        let rect = bounds.insetBy(dx: 2, dy: 2)
+        let path = NSBezierPath(roundedRect: rect, xRadius: 13, yRadius: 13)
+        NSColor.windowBackgroundColor.withAlphaComponent(0.9).setFill()
+        path.fill()
+        NSColor.separatorColor.withAlphaComponent(0.8).setStroke()
+        path.lineWidth = 1
+        path.stroke()
+
+        drawCentered("◆", y: bounds.midY + 16, size: 13, weight: .semibold)
+        drawCentered("计划", y: bounds.midY - 14, size: 12, weight: .semibold)
+    }
+
+    private func drawCentered(_ text: String, y: CGFloat, size: CGFloat, weight: NSFont.Weight) {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: size, weight: weight),
+            .foregroundColor: NSColor.labelColor
+        ]
+        let attributed = NSAttributedString(string: text, attributes: attributes)
+        let textSize = attributed.size()
+        attributed.draw(
+            at: NSPoint(
+                x: bounds.midX - textSize.width / 2,
+                y: y - textSize.height / 2
             )
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovering in
-            if isHovering {
-                onTap()
-            }
-        }
-        .help("显示 SideNotes 计划卡片")
+        )
     }
 }

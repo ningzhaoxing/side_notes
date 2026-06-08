@@ -9,6 +9,7 @@ final class AppCoordinator: NSObject {
     private lazy var editorWindow: NSWindow = makeEditorWindow()
     private var edgeTrigger: EdgeTriggerController?
     private var statusItem: NSStatusItem?
+    private var pendingHideWorkItem: DispatchWorkItem?
 
     init(store: PlanStore) {
         let viewModel = PlanViewModel(store: store)
@@ -40,12 +41,15 @@ final class AppCoordinator: NSObject {
         edgeTrigger = EdgeTriggerController(
             triggerSide: viewModel.settings.triggerSide,
             onShow: { [weak self] in
+                self?.cancelPendingHide()
                 self?.cardController.show()
             },
             onHideCheck: { [weak self] mouseLocation in
                 guard let self else { return }
                 if self.cardController.shouldAutoHide(mouseLocation: mouseLocation) {
-                    self.cardController.hide()
+                    self.scheduleHide()
+                } else {
+                    self.cancelPendingHide()
                 }
             }
         )
@@ -53,6 +57,7 @@ final class AppCoordinator: NSObject {
     }
 
     func showCard() {
+        cancelPendingHide()
         cardController.show()
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -79,6 +84,23 @@ final class AppCoordinator: NSObject {
 
     @objc private func quitFromMenu() {
         NSApp.terminate(nil)
+    }
+
+    private func scheduleHide() {
+        guard pendingHideWorkItem == nil else { return }
+        let workItem = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                self?.pendingHideWorkItem = nil
+                self?.cardController.hide()
+            }
+        }
+        pendingHideWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55, execute: workItem)
+    }
+
+    private func cancelPendingHide() {
+        pendingHideWorkItem?.cancel()
+        pendingHideWorkItem = nil
     }
 
     private func makeEditorWindow() -> NSWindow {

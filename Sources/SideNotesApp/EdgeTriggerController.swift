@@ -35,7 +35,7 @@ final class EdgeTriggerController {
         }
 
         let frame = screen.frame
-        let threshold: CGFloat = 44
+        let threshold: CGFloat = 12
         switch triggerSide {
         case .right where mouse.x >= frame.maxX - threshold:
             onShow()
