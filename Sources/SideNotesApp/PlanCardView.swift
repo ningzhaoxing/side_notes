@@ -5,6 +5,7 @@ struct PlanCardView: View {
     @ObservedObject var viewModel: PlanViewModel
     var onPinToggle: (Bool) -> Void
     var onEdit: () -> Void
+    @State private var isArchiveConfirmationPresented = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,6 +31,18 @@ struct PlanCardView: View {
         )
         .shadow(color: .black.opacity(0.22), radius: 26, x: 0, y: 18)
         .opacity(viewModel.settings.cardOpacity)
+        .confirmationDialog(
+            "归档当前计划？",
+            isPresented: $isArchiveConfirmationPresented,
+            titleVisibility: .visible
+        ) {
+            Button("归档并进入下一天", role: .destructive) {
+                viewModel.archiveCurrentPlan()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("当前计划会保存到历史归档，然后清空当天计划。")
+        }
     }
 
     private var controls: some View {
@@ -49,7 +62,7 @@ struct PlanCardView: View {
                 onEdit()
             }
             Button("归档") {
-                viewModel.archiveCurrentPlan()
+                isArchiveConfirmationPresented = true
             }
             .disabled(viewModel.dailyPlan.groups.isEmpty)
         }
@@ -143,4 +156,3 @@ struct PlanCardView: View {
         .padding(.vertical, 24)
     }
 }
-

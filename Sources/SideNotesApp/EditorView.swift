@@ -6,6 +6,7 @@ struct EditorView: View {
     @State private var newGroupTitle = ""
     @State private var newAreaTitle = ""
     @State private var archiveQuery = ""
+    @State private var isArchiveConfirmationPresented = false
 
     var body: some View {
         TabView {
@@ -20,6 +21,18 @@ struct EditorView: View {
         }
         .padding()
         .frame(minWidth: 760, minHeight: 560)
+        .confirmationDialog(
+            "归档当前计划？",
+            isPresented: $isArchiveConfirmationPresented,
+            titleVisibility: .visible
+        ) {
+            Button("归档并进入下一天", role: .destructive) {
+                viewModel.archiveCurrentPlan()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("当前计划会保存到历史归档，然后清空当天计划。")
+        }
     }
 
     private var todayEditor: some View {
@@ -51,7 +64,7 @@ struct EditorView: View {
 
             HStack {
                 Button("归档并进入下一天") {
-                    viewModel.archiveCurrentPlan()
+                    isArchiveConfirmationPresented = true
                 }
                 .disabled(viewModel.dailyPlan.groups.isEmpty)
                 Spacer()
