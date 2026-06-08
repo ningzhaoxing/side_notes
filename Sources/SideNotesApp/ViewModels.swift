@@ -65,10 +65,48 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
+    func renameDailyGroup(id: UUID, title: String) {
+        guard !title.trimmed.isEmpty else { return }
+        performAndReload {
+            try store.renameDailyGroup(id: id, title: title.trimmed)
+        }
+    }
+
+    func moveDailyGroup(id: UUID, toSortOrder sortOrder: Int) {
+        performAndReload {
+            try store.moveDailyGroup(id: id, toSortOrder: sortOrder)
+        }
+    }
+
+    func deleteDailyGroup(id: UUID) {
+        performAndReload {
+            try store.deleteDailyGroup(id: id)
+        }
+    }
+
     func addDailyTask(groupID: UUID, title: String) {
         guard !title.trimmed.isEmpty else { return }
         performAndReload {
             _ = try store.addDailyTask(groupID: groupID, title: title.trimmed)
+        }
+    }
+
+    func renameDailyTask(id: UUID, title: String) {
+        guard !title.trimmed.isEmpty else { return }
+        performAndReload {
+            try store.renameDailyTask(id: id, title: title.trimmed)
+        }
+    }
+
+    func moveDailyTask(id: UUID, toSortOrder sortOrder: Int) {
+        performAndReload {
+            try store.moveDailyTask(id: id, toSortOrder: sortOrder)
+        }
+    }
+
+    func deleteDailyTask(id: UUID) {
+        performAndReload {
+            try store.deleteDailyTask(id: id)
         }
     }
 
@@ -85,10 +123,48 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
+    func renameLongTermArea(id: UUID, title: String) {
+        guard !title.trimmed.isEmpty else { return }
+        performAndReload {
+            try store.renameLongTermArea(id: id, title: title.trimmed)
+        }
+    }
+
+    func moveLongTermArea(id: UUID, toSortOrder sortOrder: Int) {
+        performAndReload {
+            try store.moveLongTermArea(id: id, toSortOrder: sortOrder)
+        }
+    }
+
+    func deleteLongTermArea(id: UUID) {
+        performAndReload {
+            try store.deleteLongTermArea(id: id)
+        }
+    }
+
     func addLongTermItem(areaID: UUID, title: String) {
         guard !title.trimmed.isEmpty else { return }
         performAndReload {
             _ = try store.addLongTermItem(areaID: areaID, title: title.trimmed)
+        }
+    }
+
+    func renameLongTermItem(id: UUID, title: String) {
+        guard !title.trimmed.isEmpty else { return }
+        performAndReload {
+            try store.renameLongTermItem(id: id, title: title.trimmed)
+        }
+    }
+
+    func moveLongTermItem(id: UUID, toSortOrder sortOrder: Int) {
+        performAndReload {
+            try store.moveLongTermItem(id: id, toSortOrder: sortOrder)
+        }
+    }
+
+    func deleteLongTermItem(id: UUID) {
+        performAndReload {
+            try store.deleteLongTermItem(id: id)
         }
     }
 
@@ -132,4 +208,3 @@ private extension String {
         trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
-

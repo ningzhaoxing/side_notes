@@ -190,6 +190,54 @@ func testPlanStoreArchivesCurrentPlanAndSearchesHistory() throws {
     try expectEqual(searchResults[0].id, archive.id, "archive search result id")
 }
 
+func testPlanStoreEditsDeletesAndReordersDailyPlan() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+
+    let work = try store.addDailyGroup(title: "Work")
+    let learning = try store.addDailyGroup(title: "Learning")
+    let first = try store.addDailyTask(groupID: work.id, title: "First")
+    let second = try store.addDailyTask(groupID: work.id, title: "Second")
+
+    try store.renameDailyGroup(id: work.id, title: "Deep Work")
+    try store.renameDailyTask(id: first.id, title: "Focus block")
+    try store.moveDailyTask(id: second.id, toSortOrder: 0)
+    try store.moveDailyGroup(id: learning.id, toSortOrder: 0)
+    try store.deleteDailyTask(id: first.id)
+
+    let planAfterEdits = try store.loadDailyPlan()
+    try expectEqual(planAfterEdits.groups.map { $0.title }, ["Learning", "Deep Work"], "daily group reorder and rename")
+    try expectEqual(planAfterEdits.groups[1].tasks.map { $0.title }, ["Second"], "daily task delete")
+
+    try store.deleteDailyGroup(id: learning.id)
+    let planAfterDelete = try store.loadDailyPlan()
+    try expectEqual(planAfterDelete.groups.map { $0.title }, ["Deep Work"], "daily group delete")
+}
+
+func testPlanStoreEditsDeletesAndReordersLongTermAreas() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+
+    let reading = try store.addLongTermArea(title: "Reading")
+    let english = try store.addLongTermArea(title: "English")
+    let first = try store.addLongTermItem(areaID: reading.id, title: "Book A")
+    let second = try store.addLongTermItem(areaID: reading.id, title: "Book B")
+
+    try store.renameLongTermArea(id: reading.id, title: "Books")
+    try store.renameLongTermItem(id: first.id, title: "Designing Your Life")
+    try store.moveLongTermArea(id: english.id, toSortOrder: 0)
+    try store.moveLongTermItem(id: second.id, toSortOrder: 0)
+    try store.deleteLongTermItem(id: first.id)
+
+    let areasAfterEdits = try store.loadLongTermAreas()
+    try expectEqual(areasAfterEdits.map { $0.title }, ["English", "Books"], "long-term area reorder and rename")
+    try expectEqual(areasAfterEdits[1].items.map { $0.title }, ["Book B"], "long-term item delete")
+
+    try store.deleteLongTermArea(id: english.id)
+    let areasAfterDelete = try store.loadLongTermAreas()
+    try expectEqual(areasAfterDelete.map { $0.title }, ["Books"], "long-term area delete")
+}
+
 let tests: [(String, () throws -> Void)] = [
     ("default settings are readable and usable", testDefaultSettingsAreReadableAndUsable),
     ("appearance settings clamp to readable ranges", testAppearanceSettingsClampToReadableRanges),
@@ -198,7 +246,9 @@ let tests: [(String, () throws -> Void)] = [
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("plan store persists daily groups, tasks, and settings", testPlanStorePersistsDailyGroupsTasksAndSettings),
     ("plan store persists long-term areas and items", testPlanStorePersistsLongTermAreasAndItems),
-    ("plan store archives current plan and searches history", testPlanStoreArchivesCurrentPlanAndSearchesHistory)
+    ("plan store archives current plan and searches history", testPlanStoreArchivesCurrentPlanAndSearchesHistory),
+    ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
+    ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas)
 ]
 
 var failures: [String] = []

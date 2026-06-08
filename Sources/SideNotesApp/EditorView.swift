@@ -37,8 +37,14 @@ struct EditorView: View {
                 ContentUnavailableView("还没有当天计划", systemImage: "checklist", description: Text("添加自定义分组后，再为每组添加任务。"))
             } else {
                 List {
-                    ForEach(viewModel.dailyPlan.groups.sorted { $0.sortOrder < $1.sortOrder }) { group in
-                        DailyGroupEditor(group: group, viewModel: viewModel)
+                    let groups = viewModel.dailyPlan.groups.sorted { $0.sortOrder < $1.sortOrder }
+                    ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+                        DailyGroupEditor(
+                            group: group,
+                            index: index,
+                            groupCount: groups.count,
+                            viewModel: viewModel
+                        )
                     }
                 }
             }
@@ -71,8 +77,14 @@ struct EditorView: View {
                 ContentUnavailableView("还没有长期计划", systemImage: "rectangle.stack", description: Text("添加长期领域和事项，它们会显示在卡片背面。"))
             } else {
                 List {
-                    ForEach(viewModel.longTermAreas.sorted { $0.sortOrder < $1.sortOrder }) { area in
-                        LongTermAreaEditor(area: area, viewModel: viewModel)
+                    let areas = viewModel.longTermAreas.sorted { $0.sortOrder < $1.sortOrder }
+                    ForEach(Array(areas.enumerated()), id: \.element.id) { index, area in
+                        LongTermAreaEditor(
+                            area: area,
+                            index: index,
+                            areaCount: areas.count,
+                            viewModel: viewModel
+                        )
                     }
                 }
             }
@@ -146,22 +158,22 @@ struct EditorView: View {
 
 private struct DailyGroupEditor: View {
     let group: DailyPlanGroup
+    let index: Int
+    let groupCount: Int
     @ObservedObject var viewModel: PlanViewModel
     @State private var newTaskTitle = ""
+    @State private var groupTitle = ""
 
     var body: some View {
-        Section(group.title) {
-            ForEach(group.tasks.sorted { $0.sortOrder < $1.sortOrder }) { task in
-                Button {
-                    viewModel.toggleTask(task)
-                } label: {
-                    HStack {
-                        Image(systemName: task.isCompleted ? "checkmark.square.fill" : "square")
-                        Text(task.title)
-                            .strikethrough(task.isCompleted)
-                    }
-                }
-                .buttonStyle(.plain)
+        Section {
+            let tasks = group.tasks.sorted { $0.sortOrder < $1.sortOrder }
+            ForEach(Array(tasks.enumerated()), id: \.element.id) { taskIndex, task in
+                DailyTaskEditor(
+                    task: task,
+                    index: taskIndex,
+                    taskCount: tasks.count,
+                    viewModel: viewModel
+                )
             }
 
             HStack {
@@ -172,19 +184,92 @@ private struct DailyGroupEditor: View {
                     newTaskTitle = ""
                 }
             }
+        } header: {
+            HStack {
+                TextField("分组名称", text: $groupTitle)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { viewModel.renameDailyGroup(id: group.id, title: groupTitle) }
+                    .onAppear { groupTitle = group.title }
+                    .onChange(of: group.title) { _, newValue in groupTitle = newValue }
+
+                Button("保存") {
+                    viewModel.renameDailyGroup(id: group.id, title: groupTitle)
+                }
+                Button("上移") {
+                    viewModel.moveDailyGroup(id: group.id, toSortOrder: max(0, index - 1))
+                }
+                .disabled(index == 0)
+                Button("下移") {
+                    viewModel.moveDailyGroup(id: group.id, toSortOrder: min(groupCount - 1, index + 1))
+                }
+                .disabled(index >= groupCount - 1)
+                Button("删除", role: .destructive) {
+                    viewModel.deleteDailyGroup(id: group.id)
+                }
+            }
+        }
+    }
+}
+
+private struct DailyTaskEditor: View {
+    let task: DailyTask
+    let index: Int
+    let taskCount: Int
+    @ObservedObject var viewModel: PlanViewModel
+    @State private var title = ""
+
+    var body: some View {
+        HStack {
+            Button {
+                viewModel.toggleTask(task)
+            } label: {
+                Image(systemName: task.isCompleted ? "checkmark.square.fill" : "square")
+            }
+            .buttonStyle(.plain)
+
+            TextField("任务", text: $title)
+                .textFieldStyle(.roundedBorder)
+                .strikethrough(task.isCompleted)
+                .onSubmit { viewModel.renameDailyTask(id: task.id, title: title) }
+                .onAppear { title = task.title }
+                .onChange(of: task.title) { _, newValue in title = newValue }
+
+            Button("保存") {
+                viewModel.renameDailyTask(id: task.id, title: title)
+            }
+            Button("上移") {
+                viewModel.moveDailyTask(id: task.id, toSortOrder: max(0, index - 1))
+            }
+            .disabled(index == 0)
+            Button("下移") {
+                viewModel.moveDailyTask(id: task.id, toSortOrder: min(taskCount - 1, index + 1))
+            }
+            .disabled(index >= taskCount - 1)
+            Button("删除", role: .destructive) {
+                viewModel.deleteDailyTask(id: task.id)
+            }
         }
     }
 }
 
 private struct LongTermAreaEditor: View {
     let area: LongTermArea
+    let index: Int
+    let areaCount: Int
     @ObservedObject var viewModel: PlanViewModel
     @State private var newItemTitle = ""
+    @State private var areaTitle = ""
 
     var body: some View {
-        Section(area.title) {
-            ForEach(area.items.sorted { $0.sortOrder < $1.sortOrder }) { item in
-                Text(item.title)
+        Section {
+            let items = area.items.sorted { $0.sortOrder < $1.sortOrder }
+            ForEach(Array(items.enumerated()), id: \.element.id) { itemIndex, item in
+                LongTermItemEditor(
+                    item: item,
+                    index: itemIndex,
+                    itemCount: items.count,
+                    viewModel: viewModel
+                )
             }
 
             HStack {
@@ -194,6 +279,62 @@ private struct LongTermAreaEditor: View {
                     viewModel.addLongTermItem(areaID: area.id, title: newItemTitle)
                     newItemTitle = ""
                 }
+            }
+        } header: {
+            HStack {
+                TextField("领域名称", text: $areaTitle)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { viewModel.renameLongTermArea(id: area.id, title: areaTitle) }
+                    .onAppear { areaTitle = area.title }
+                    .onChange(of: area.title) { _, newValue in areaTitle = newValue }
+
+                Button("保存") {
+                    viewModel.renameLongTermArea(id: area.id, title: areaTitle)
+                }
+                Button("上移") {
+                    viewModel.moveLongTermArea(id: area.id, toSortOrder: max(0, index - 1))
+                }
+                .disabled(index == 0)
+                Button("下移") {
+                    viewModel.moveLongTermArea(id: area.id, toSortOrder: min(areaCount - 1, index + 1))
+                }
+                .disabled(index >= areaCount - 1)
+                Button("删除", role: .destructive) {
+                    viewModel.deleteLongTermArea(id: area.id)
+                }
+            }
+        }
+    }
+}
+
+private struct LongTermItemEditor: View {
+    let item: LongTermItem
+    let index: Int
+    let itemCount: Int
+    @ObservedObject var viewModel: PlanViewModel
+    @State private var title = ""
+
+    var body: some View {
+        HStack {
+            TextField("长期事项", text: $title)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { viewModel.renameLongTermItem(id: item.id, title: title) }
+                .onAppear { title = item.title }
+                .onChange(of: item.title) { _, newValue in title = newValue }
+
+            Button("保存") {
+                viewModel.renameLongTermItem(id: item.id, title: title)
+            }
+            Button("上移") {
+                viewModel.moveLongTermItem(id: item.id, toSortOrder: max(0, index - 1))
+            }
+            .disabled(index == 0)
+            Button("下移") {
+                viewModel.moveLongTermItem(id: item.id, toSortOrder: min(itemCount - 1, index + 1))
+            }
+            .disabled(index >= itemCount - 1)
+            Button("删除", role: .destructive) {
+                viewModel.deleteLongTermItem(id: item.id)
             }
         }
     }

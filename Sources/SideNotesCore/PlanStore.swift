@@ -67,6 +67,33 @@ public final class PlanStore {
         return group
     }
 
+    public func renameDailyGroup(id: UUID, title: String) throws {
+        try database.transaction {
+            try database.execute(
+                "UPDATE daily_groups SET title = ? WHERE id = ?",
+                [.text(title), .text(id.uuidString)]
+            )
+            try touchDailyPlan()
+        }
+    }
+
+    public func moveDailyGroup(id: UUID, toSortOrder sortOrder: Int) throws {
+        try database.transaction {
+            try reorder(table: "daily_groups", id: id, toSortOrder: sortOrder)
+            try touchDailyPlan()
+        }
+    }
+
+    public func deleteDailyGroup(id: UUID) throws {
+        try database.transaction {
+            try database.execute(
+                "DELETE FROM daily_groups WHERE id = ?",
+                [.text(id.uuidString)]
+            )
+            try touchDailyPlan()
+        }
+    }
+
     public func addDailyTask(groupID: UUID, title: String) throws -> DailyTask {
         let task = DailyTask(
             title: title,
@@ -91,6 +118,42 @@ public final class PlanStore {
             try touchDailyPlan()
         }
         return task
+    }
+
+    public func renameDailyTask(id: UUID, title: String) throws {
+        try database.transaction {
+            try database.execute(
+                "UPDATE daily_tasks SET title = ?, updated_at = ? WHERE id = ?",
+                [.text(title), .double(Date().timeIntervalSince1970), .text(id.uuidString)]
+            )
+            try touchDailyPlan()
+        }
+    }
+
+    public func moveDailyTask(id: UUID, toSortOrder sortOrder: Int) throws {
+        try database.transaction {
+            let groupRows = try database.query(
+                "SELECT group_id FROM daily_tasks WHERE id = ?",
+                [.text(id.uuidString)]
+            ) { statement in
+                try sqliteText(statement, 0)
+            }
+            guard let groupID = groupRows.first else {
+                throw SQLiteStoreError.missingValue("daily task group")
+            }
+            try reorder(table: "daily_tasks", id: id, toSortOrder: sortOrder, ownerColumn: "group_id", ownerValue: groupID)
+            try touchDailyPlan()
+        }
+    }
+
+    public func deleteDailyTask(id: UUID) throws {
+        try database.transaction {
+            try database.execute(
+                "DELETE FROM daily_tasks WHERE id = ?",
+                [.text(id.uuidString)]
+            )
+            try touchDailyPlan()
+        }
     }
 
     public func toggleTask(id: UUID) throws -> DailyTask {
@@ -186,6 +249,24 @@ public final class PlanStore {
         return area
     }
 
+    public func renameLongTermArea(id: UUID, title: String) throws {
+        try database.execute(
+            "UPDATE long_term_areas SET title = ?, updated_at = ? WHERE id = ?",
+            [.text(title), .double(Date().timeIntervalSince1970), .text(id.uuidString)]
+        )
+    }
+
+    public func moveLongTermArea(id: UUID, toSortOrder sortOrder: Int) throws {
+        try reorder(table: "long_term_areas", id: id, toSortOrder: sortOrder)
+    }
+
+    public func deleteLongTermArea(id: UUID) throws {
+        try database.execute(
+            "DELETE FROM long_term_areas WHERE id = ?",
+            [.text(id.uuidString)]
+        )
+    }
+
     public func addLongTermItem(areaID: UUID, title: String) throws -> LongTermItem {
         let now = Date()
         let item = LongTermItem(
@@ -209,6 +290,33 @@ public final class PlanStore {
             ]
         )
         return item
+    }
+
+    public func renameLongTermItem(id: UUID, title: String) throws {
+        try database.execute(
+            "UPDATE long_term_items SET title = ?, updated_at = ? WHERE id = ?",
+            [.text(title), .double(Date().timeIntervalSince1970), .text(id.uuidString)]
+        )
+    }
+
+    public func moveLongTermItem(id: UUID, toSortOrder sortOrder: Int) throws {
+        let areaRows = try database.query(
+            "SELECT area_id FROM long_term_items WHERE id = ?",
+            [.text(id.uuidString)]
+        ) { statement in
+            try sqliteText(statement, 0)
+        }
+        guard let areaID = areaRows.first else {
+            throw SQLiteStoreError.missingValue("long-term item area")
+        }
+        try reorder(table: "long_term_items", id: id, toSortOrder: sortOrder, ownerColumn: "area_id", ownerValue: areaID)
+    }
+
+    public func deleteLongTermItem(id: UUID) throws {
+        try database.execute(
+            "DELETE FROM long_term_items WHERE id = ?",
+            [.text(id.uuidString)]
+        )
     }
 
     public func archiveCurrentPlan(now: Date = Date()) throws -> ArchiveDay {
@@ -511,6 +619,42 @@ public final class PlanStore {
         ) { statement in
             sqliteInt(statement, 0)
         }.first ?? 0
+    }
+
+    private func reorder(
+        table: String,
+        id: UUID,
+        toSortOrder targetSortOrder: Int,
+        ownerColumn: String? = nil,
+        ownerValue: String? = nil
+    ) throws {
+        let rows: [String]
+        if let ownerColumn, let ownerValue {
+            rows = try database.query(
+                "SELECT id FROM \(table) WHERE \(ownerColumn) = ? ORDER BY sort_order ASC",
+                [.text(ownerValue)]
+            ) { statement in
+                try sqliteText(statement, 0)
+            }
+        } else {
+            rows = try database.query(
+                "SELECT id FROM \(table) ORDER BY sort_order ASC"
+            ) { statement in
+                try sqliteText(statement, 0)
+            }
+        }
+
+        let idString = id.uuidString
+        var ordered = rows.filter { $0 != idString }
+        let insertionIndex = max(0, min(targetSortOrder, ordered.count))
+        ordered.insert(idString, at: insertionIndex)
+
+        for (index, rowID) in ordered.enumerated() {
+            try database.execute(
+                "UPDATE \(table) SET sort_order = ? WHERE id = ?",
+                [.int(index), .text(rowID)]
+            )
+        }
     }
 
     private func touchDailyPlan() throws {
