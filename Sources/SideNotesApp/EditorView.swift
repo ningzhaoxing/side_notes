@@ -9,15 +9,19 @@ struct EditorView: View {
     @State private var isArchiveConfirmationPresented = false
 
     var body: some View {
-        TabView {
+        TabView(selection: $viewModel.editorTab) {
             todayEditor
                 .tabItem { Text("今天") }
+                .tag(EditorTab.today)
             longTermEditor
                 .tabItem { Text("长期") }
+                .tag(EditorTab.longTerm)
             archiveBrowser
                 .tabItem { Text("历史") }
+                .tag(EditorTab.archives)
             appearanceEditor
                 .tabItem { Text("外观") }
+                .tag(EditorTab.appearance)
         }
         .padding()
         .frame(minWidth: 760, minHeight: 560)

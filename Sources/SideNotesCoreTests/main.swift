@@ -66,6 +66,22 @@ func testWindowFrameOutsideScreensFallsBackToDefault() throws {
     try expectEqual(settings.cardFrame.height, 580, accuracy: 0.001, "fallback height")
 }
 
+func testCardSizeUpdatesClampToReadableRanges() throws {
+    var settings = AppSettings.defaults()
+
+    settings.setCardSize(width: 120, height: 220)
+    try expectEqual(settings.cardFrame.width, 260, accuracy: 0.001, "minimum card width")
+    try expectEqual(settings.cardFrame.height, 360, accuracy: 0.001, "minimum card height")
+
+    settings.setCardSize(width: 900, height: 1_200)
+    try expectEqual(settings.cardFrame.width, 720, accuracy: 0.001, "maximum card width")
+    try expectEqual(settings.cardFrame.height, 900, accuracy: 0.001, "maximum card height")
+
+    settings.setCardSize(width: 420, height: 640)
+    try expectEqual(settings.cardFrame.width, 420, accuracy: 0.001, "custom card width")
+    try expectEqual(settings.cardFrame.height, 640, accuracy: 0.001, "custom card height")
+}
+
 func testArchivePreservesGroupsTasksOrderAndCompletion() throws {
     let sourceDate = Date(timeIntervalSince1970: 1_700_000_000)
     let archiveDate = Date(timeIntervalSince1970: 1_700_086_400)
@@ -242,6 +258,7 @@ let tests: [(String, () throws -> Void)] = [
     ("default settings are readable and usable", testDefaultSettingsAreReadableAndUsable),
     ("appearance settings clamp to readable ranges", testAppearanceSettingsClampToReadableRanges),
     ("window frame outside screens falls back to default", testWindowFrameOutsideScreensFallsBackToDefault),
+    ("card size updates clamp to readable ranges", testCardSizeUpdatesClampToReadableRanges),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("plan store persists daily groups, tasks, and settings", testPlanStorePersistsDailyGroupsTasksAndSettings),

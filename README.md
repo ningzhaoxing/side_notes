@@ -40,13 +40,15 @@ The install script builds the app and copies it to:
 ~/Applications/SideNotes.app
 ```
 
-The app runs as a menu-bar accessory and opens with the card pinned by default, so it is visible immediately after launch. Click `取消固定` to let it hide back into the side edge. Use the `SideNotes` menu-bar item to show the card or open the editor. Moving the mouse to the right edge of the screen also reveals the card.
+The app runs as a menu-bar accessory and opens with the card pinned by default, so it is visible immediately after launch. Click `取消固定` to let it hide back into the side edge. When hidden, a narrow side bookmark stays on the screen edge; click it or move the mouse to the edge to reveal the card again. Use the `SideNotes` menu-bar item to show the card or open the editor.
 
 ## Use
 
 - The front side shows today's custom groups and checkable tasks.
 - The back side shows long-term areas and items.
+- Drag the small handle in the lower-right corner of the card to resize it.
 - Use `编辑` or the menu-bar item to open the editor.
+- Use `设置` on the card to open the `外观` tab directly.
 - Use `归档` to archive the current day and start a blank plan.
 - Use the editor's `外观` tab to change card opacity and corner radius.
 

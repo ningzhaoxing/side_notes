@@ -2,6 +2,13 @@ import Foundation
 import SwiftUI
 import SideNotesCore
 
+enum EditorTab: Hashable {
+    case today
+    case longTerm
+    case archives
+    case appearance
+}
+
 @MainActor
 final class PlanViewModel: ObservableObject {
     @Published var dailyPlan: DailyPlan
@@ -10,6 +17,7 @@ final class PlanViewModel: ObservableObject {
     @Published var archiveSearchResults: [ArchiveDay]
     @Published var settings: AppSettings
     @Published var errorMessage: String?
+    @Published var editorTab: EditorTab
 
     let store: PlanStore
 
@@ -20,6 +28,7 @@ final class PlanViewModel: ObservableObject {
         archives = []
         archiveSearchResults = []
         settings = .defaults()
+        editorTab = .today
         reload()
     }
 
@@ -55,6 +64,11 @@ final class PlanViewModel: ObservableObject {
     func setCardCornerRadius(_ radius: Double) {
         settings.cardCornerRadius = radius
         settings.validate()
+        saveSettings()
+    }
+
+    func setCardSize(_ size: CGSize) {
+        settings.setCardSize(width: size.width, height: size.height)
         saveSettings()
     }
 

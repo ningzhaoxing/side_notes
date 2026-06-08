@@ -21,6 +21,9 @@ final class AppCoordinator: NSObject {
         cardController.onEdit = { [weak self] in
             self?.showEditor()
         }
+        cardController.onSettings = { [weak self] in
+            self?.showEditor(tab: .appearance)
+        }
     }
 
     func start() {
@@ -54,7 +57,10 @@ final class AppCoordinator: NSObject {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    func showEditor() {
+    func showEditor(tab: EditorTab? = nil) {
+        if let tab {
+            viewModel.editorTab = tab
+        }
         if !editorWindow.isVisible {
             editorWindow.center()
         }

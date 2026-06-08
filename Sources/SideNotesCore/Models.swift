@@ -225,4 +225,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
             )
         }
     }
+
+    public mutating func setCardSize(width: Double, height: Double) {
+        cardFrame.width = width
+        cardFrame.height = height
+        validate()
+    }
 }
