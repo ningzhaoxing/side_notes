@@ -27,7 +27,7 @@ func testDefaultSettingsAreReadableAndUsable() throws {
     let settings = AppSettings.defaults()
 
     try expectEqual(settings.triggerSide, .right, "default trigger side")
-    try expect(!settings.isPinned, "default pinned state")
+    try expect(settings.isPinned, "default pinned state")
     try expectEqual(settings.visibleSide, .front, "default visible side")
     try expectEqual(settings.cardOpacity, 0.94, accuracy: 0.001, "default opacity")
     try expectEqual(settings.cardCornerRadius, 22, accuracy: 0.001, "default corner radius")

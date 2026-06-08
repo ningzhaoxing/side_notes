@@ -35,7 +35,7 @@ The app prioritizes quick viewing while working. Editing happens in a separate f
 
 ### Primary Window
 
-The primary window is a floating plan card that appears from the screen edge. The default trigger is the right screen edge. When the mouse approaches the edge trigger zone, the card slides out. When the card is not pinned and the user moves away, it can slide back in.
+The primary window is a floating plan card that appears from the screen edge. The app opens with the card pinned by default so the first launch is immediately visible and usable. The default trigger is the right screen edge. When the mouse approaches the edge trigger zone, the card slides out. When the card is not pinned and the user moves away, it can slide back in.
 
 The card includes a small control row:
 

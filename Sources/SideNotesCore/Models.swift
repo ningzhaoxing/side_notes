@@ -194,7 +194,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public static func defaults() -> AppSettings {
         AppSettings(
             triggerSide: .right,
-            isPinned: false,
+            isPinned: true,
             cardFrame: StoredRect(x: 1_088, y: 160, width: 320, height: 580),
             editorFrame: StoredRect(x: 220, y: 140, width: 920, height: 680),
             visibleSide: .front,
