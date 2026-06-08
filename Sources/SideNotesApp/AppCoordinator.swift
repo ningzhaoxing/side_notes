@@ -24,7 +24,11 @@ final class AppCoordinator: NSObject {
     }
 
     func start() {
-        installStatusItem()
+        if ProcessInfo.processInfo.environment["SIDE_NOTES_DISABLE_STATUS_ITEM"] == "1" {
+            statusItem = nil
+        } else {
+            installStatusItem()
+        }
         cardController.show()
         if !viewModel.settings.isPinned {
             cardController.hide()
@@ -96,4 +100,3 @@ final class AppCoordinator: NSObject {
         statusItem = item
     }
 }
-

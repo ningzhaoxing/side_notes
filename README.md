@@ -1,0 +1,41 @@
+# SideNotes
+
+SideNotes is a personal macOS planning card. It stays available from the screen edge, can be pinned as a floating card, flips between today's plan and long-term areas, and stores everything locally in SQLite.
+
+## Build
+
+```bash
+Scripts/build_app.sh
+```
+
+The runnable app is created at:
+
+```text
+Build/SideNotes.app
+```
+
+## Open
+
+```bash
+open Build/SideNotes.app
+```
+
+The app runs as a menu-bar accessory. Use the `SideNotes` menu-bar item to show the card or open the editor. Moving the mouse to the right edge of the screen also reveals the card.
+
+## Use
+
+- The front side shows today's custom groups and checkable tasks.
+- The back side shows long-term areas and items.
+- Use `编辑` or the menu-bar item to open the editor.
+- Use `归档` to archive the current day and start a blank plan.
+- Use the editor's `外观` tab to change card opacity and corner radius.
+
+## Data
+
+The local database is stored at:
+
+```text
+~/Library/Application Support/SideNotes/SideNotes.sqlite
+```
+
+No cloud sync is used in version 1.

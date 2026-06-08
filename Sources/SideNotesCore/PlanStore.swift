@@ -17,6 +17,10 @@ public final class PlanStore {
     }
 
     public static func defaultDatabaseURL() -> URL {
+        if let override = ProcessInfo.processInfo.environment["SIDE_NOTES_DATABASE_PATH"], !override.isEmpty {
+            return URL(fileURLWithPath: override)
+        }
+
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
         return base.appendingPathComponent("SideNotes", isDirectory: true)
