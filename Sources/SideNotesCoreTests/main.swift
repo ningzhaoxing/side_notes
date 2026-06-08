@@ -66,10 +66,62 @@ func testWindowFrameOutsideScreensFallsBackToDefault() throws {
     try expectEqual(settings.cardFrame.height, 580, accuracy: 0.001, "fallback height")
 }
 
+func testArchivePreservesGroupsTasksOrderAndCompletion() throws {
+    let sourceDate = Date(timeIntervalSince1970: 1_700_000_000)
+    let archiveDate = Date(timeIntervalSince1970: 1_700_086_400)
+    let firstTask = DailyTask(title: "Draft launch plan", isCompleted: true, sortOrder: 0, createdAt: sourceDate, updatedAt: sourceDate)
+    let secondTask = DailyTask(title: "Study English", isCompleted: false, sortOrder: 1, createdAt: sourceDate, updatedAt: sourceDate)
+    let plan = DailyPlan(
+        planningDate: sourceDate,
+        groups: [
+            DailyPlanGroup(title: "Work", sortOrder: 0, tasks: [firstTask]),
+            DailyPlanGroup(title: "Learning", sortOrder: 1, tasks: [secondTask])
+        ],
+        createdAt: sourceDate,
+        updatedAt: sourceDate
+    )
+
+    let result = ArchiveService.archive(plan: plan, existingArchives: [], now: archiveDate)
+
+    try expect(result.current.groups.isEmpty, "current plan should be blank after archive")
+    try expectEqual(result.archives.count, 1, "archive count")
+    let archive = result.archives[0]
+    try expectEqual(archive.archiveDate, archiveDate, "archive date")
+    try expectEqual(archive.sourcePlanningDate, sourceDate, "source planning date")
+    try expectEqual(archive.groupsSnapshot.map(\.title), ["Work", "Learning"], "group order")
+    try expectEqual(archive.groupsSnapshot[0].tasks.map(\.title), ["Draft launch plan"], "first group task title")
+    try expect(archive.groupsSnapshot[0].tasks[0].isCompleted, "completed task state")
+    try expect(!archive.groupsSnapshot[1].tasks[0].isCompleted, "incomplete task state")
+}
+
+func testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan() throws {
+    let oldDate = Date(timeIntervalSince1970: 1_600_000_000)
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
+    let existingArchive = ArchiveDay(
+        archiveDate: oldDate,
+        sourcePlanningDate: oldDate,
+        groupsSnapshot: [DailyPlanGroup(title: "Old", sortOrder: 0)]
+    )
+    let plan = DailyPlan(
+        planningDate: oldDate,
+        groups: [DailyPlanGroup(title: "Today", sortOrder: 0, tasks: [DailyTask(title: "Ship", sortOrder: 0)])]
+    )
+
+    let result = ArchiveService.archive(plan: plan, existingArchives: [existingArchive], now: now)
+
+    try expectEqual(result.archives.count, 2, "existing archive plus new archive")
+    try expectEqual(result.archives[0], existingArchive, "existing archive preserved")
+    try expectEqual(result.archives[1].groupsSnapshot[0].title, "Today", "new archive appended")
+    try expectEqual(result.current.planningDate, now, "new current plan date")
+    try expect(result.current.groups.isEmpty, "new current plan groups")
+}
+
 let tests: [(String, () throws -> Void)] = [
     ("default settings are readable and usable", testDefaultSettingsAreReadableAndUsable),
     ("appearance settings clamp to readable ranges", testAppearanceSettingsClampToReadableRanges),
-    ("window frame outside screens falls back to default", testWindowFrameOutsideScreensFallsBackToDefault)
+    ("window frame outside screens falls back to default", testWindowFrameOutsideScreensFallsBackToDefault),
+    ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
+    ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan)
 ]
 
 var failures: [String] = []
