@@ -373,23 +373,36 @@ public final class PlanStore {
     }
 
     public func loadArchives() throws -> [ArchiveDay] {
-        try database.query(
+        let rows = try database.query(
             """
             SELECT id, archive_date, source_planning_date, groups_snapshot, created_at
             FROM archives
             ORDER BY archive_date ASC, created_at ASC
             """
         ) { statement in
-            let snapshotText = try sqliteText(statement, 3)
-            guard let data = snapshotText.data(using: .utf8) else {
-                throw SQLiteStoreError.invalidValue("archive snapshot text")
+            (
+                id: try sqliteText(statement, 0),
+                archiveDate: sqliteDouble(statement, 1),
+                sourcePlanningDate: sqliteDouble(statement, 2),
+                groupsSnapshot: try sqliteText(statement, 3),
+                createdAt: sqliteDouble(statement, 4)
+            )
+        }
+
+        return rows.compactMap { row in
+            guard
+                let id = UUID(uuidString: row.id),
+                let snapshotData = row.groupsSnapshot.data(using: .utf8),
+                let groups = try? decoder.decode([DailyPlanGroup].self, from: snapshotData)
+            else {
+                return nil
             }
             return ArchiveDay(
-                id: try UUID.from(sqliteText(statement, 0)),
-                archiveDate: Date(timeIntervalSince1970: sqliteDouble(statement, 1)),
-                sourcePlanningDate: Date(timeIntervalSince1970: sqliteDouble(statement, 2)),
-                groupsSnapshot: try decoder.decode([DailyPlanGroup].self, from: data),
-                createdAt: Date(timeIntervalSince1970: sqliteDouble(statement, 4))
+                id: id,
+                archiveDate: Date(timeIntervalSince1970: row.archiveDate),
+                sourcePlanningDate: Date(timeIntervalSince1970: row.sourcePlanningDate),
+                groupsSnapshot: groups,
+                createdAt: Date(timeIntervalSince1970: row.createdAt)
             )
         }
     }
@@ -417,7 +430,12 @@ public final class PlanStore {
         guard let json = rows.first, let data = json.data(using: .utf8) else {
             return AppSettings.defaults()
         }
-        var settings = try decoder.decode(AppSettings.self, from: data)
+        var settings: AppSettings
+        do {
+            settings = try decoder.decode(AppSettings.self, from: data)
+        } catch {
+            settings = AppSettings.defaults()
+        }
         settings.validate()
         return settings
     }

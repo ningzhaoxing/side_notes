@@ -227,6 +227,17 @@ func temporaryDatabaseURL(_ name: String) throws -> URL {
     return directory.appendingPathComponent(name)
 }
 
+func executeSQLite(url: URL, sql: String) throws {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
+    process.arguments = [url.path, sql]
+    try process.run()
+    process.waitUntilExit()
+    if process.terminationStatus != 0 {
+        throw TestFailure(description: "sqlite3 command failed with status \(process.terminationStatus)")
+    }
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -258,6 +269,17 @@ func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     try expectEqual(reopenedSettings.cardCornerRadius, 36, accuracy: 0.001, "corner radius persisted")
     try expectEqual(reopenedSettings.cardFrame, StoredRect(x: 99, y: 88, width: 420, height: 640), "card frame persisted")
     try expectEqual(reopenedSettings.editorFrame, StoredRect(x: 77, y: 66, width: 880, height: 620), "editor frame persisted")
+}
+
+func testPlanStoreFallsBackToDefaultSettingsWhenStoredJSONIsInvalid() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    _ = try PlanStore(databaseURL: url)
+    try executeSQLite(url: url, sql: "UPDATE settings SET value = 'not valid json' WHERE key = 'app';")
+
+    let reopened = try PlanStore(databaseURL: url)
+    let settings = try reopened.loadSettings()
+
+    try expectEqual(settings, AppSettings.defaults(), "invalid settings json should use defaults")
 }
 
 func testPlanStorePersistsLongTermAreasAndItems() throws {
@@ -296,6 +318,27 @@ func testPlanStoreArchivesCurrentPlanAndSearchesHistory() throws {
     try expectEqual(archives[0].groupsSnapshot[0].tasks.map { $0.title }, ["Message Alex", "Book dinner"], "archive task order")
     try expectEqual(searchResults.count, 1, "archive search count")
     try expectEqual(searchResults[0].id, archive.id, "archive search result id")
+}
+
+func testPlanStoreSkipsCorruptArchiveSnapshotRows() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let group = try store.addDailyGroup(title: "Work")
+    _ = try store.addDailyTask(groupID: group.id, title: "Review plan")
+    let goodArchive = try store.archiveCurrentPlan(now: Date(timeIntervalSince1970: 1_700_000_000))
+    try executeSQLite(
+        url: url,
+        sql: """
+        INSERT INTO archives (id, archive_date, source_planning_date, groups_snapshot, created_at)
+        VALUES ('\(UUID().uuidString)', 1700000100, 1700000100, 'not valid json', 1700000100);
+        """
+    )
+
+    let archives = try store.loadArchives()
+    let searchResults = try store.searchArchives(query: "review")
+
+    try expectEqual(archives.map { $0.id }, [goodArchive.id], "corrupt archive rows skipped")
+    try expectEqual(searchResults.map { $0.id }, [goodArchive.id], "search ignores corrupt archive rows")
 }
 
 func testPlanStoreEditsDeletesAndReordersDailyPlan() throws {
@@ -396,8 +439,10 @@ let tests: [(String, () throws -> Void)] = [
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),
     ("plan store persists daily groups, tasks, and settings", testPlanStorePersistsDailyGroupsTasksAndSettings),
+    ("plan store falls back to default settings when stored json is invalid", testPlanStoreFallsBackToDefaultSettingsWhenStoredJSONIsInvalid),
     ("plan store persists long-term areas and items", testPlanStorePersistsLongTermAreasAndItems),
     ("plan store archives current plan and searches history", testPlanStoreArchivesCurrentPlanAndSearchesHistory),
+    ("plan store skips corrupt archive snapshot rows", testPlanStoreSkipsCorruptArchiveSnapshotRows),
     ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
     ("plan store rejects reorder of missing daily group without changing order", testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder),
     ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas),
