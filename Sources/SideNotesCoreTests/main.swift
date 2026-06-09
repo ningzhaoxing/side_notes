@@ -600,6 +600,35 @@ func testPlanStoreArchivesCurrentPlanAndSearchesHistory() throws {
     try expectEqual(searchResults[0].id, archive.id, "archive search result id")
 }
 
+func testPlanStoreRejectsArchivingEmptyCurrentPlan() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let firstArchiveDate = Date(timeIntervalSince1970: 1_700_000_000)
+    let secondArchiveDate = Date(timeIntervalSince1970: 1_700_086_400)
+    let group = try store.addDailyGroup(title: "Work")
+    _ = try store.addDailyTask(groupID: group.id, title: "Write plan")
+    let firstArchive = try store.archiveCurrentPlan(now: firstArchiveDate)
+
+    do {
+        _ = try store.archiveCurrentPlan(now: secondArchiveDate)
+        throw TestFailure(description: "empty current plan archive should throw")
+    } catch let failure as TestFailure {
+        throw failure
+    } catch {
+        try expect(
+            error.localizedDescription.contains("missing value: current daily plan groups"),
+            "empty archive should expose readable error, got \(error.localizedDescription)"
+        )
+    }
+
+    let current = try store.loadDailyPlan()
+    let archives = try store.loadArchives()
+    let settings = try store.loadSettings()
+    try expect(current.groups.isEmpty, "empty current plan stays empty after rejected archive")
+    try expectEqual(archives.map { $0.id }, [firstArchive.id], "rejected empty archive should not create history row")
+    try expectEqual(settings.lastArchiveDate, firstArchiveDate, "rejected empty archive should not update last archive date")
+}
+
 func testPlanStoreSkipsCorruptArchiveSnapshotRows() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -915,6 +944,7 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store falls back to default settings when stored json is invalid", testPlanStoreFallsBackToDefaultSettingsWhenStoredJSONIsInvalid),
     ("plan store persists long-term areas and items", testPlanStorePersistsLongTermAreasAndItems),
     ("plan store archives current plan and searches history", testPlanStoreArchivesCurrentPlanAndSearchesHistory),
+    ("plan store rejects archiving empty current plan", testPlanStoreRejectsArchivingEmptyCurrentPlan),
     ("plan store skips corrupt archive snapshot rows", testPlanStoreSkipsCorruptArchiveSnapshotRows),
     ("plan store skips corrupt daily rows while keeping good data", testPlanStoreSkipsCorruptDailyRowsWhileKeepingGoodData),
     ("plan store recovers corrupt current plan id", testPlanStoreRecoversCorruptCurrentPlanID),

@@ -387,6 +387,9 @@ public final class PlanStore {
     public func archiveCurrentPlan(now: Date = Date()) throws -> ArchiveDay {
         try database.transaction {
             let current = try loadDailyPlan()
+            guard !current.groups.isEmpty else {
+                throw SQLiteStoreError.missingValue("current daily plan groups")
+            }
             let existing = try loadArchives()
             let result = ArchiveService.archive(plan: current, existingArchives: existing, now: now)
             guard let archive = result.archives.last else {
