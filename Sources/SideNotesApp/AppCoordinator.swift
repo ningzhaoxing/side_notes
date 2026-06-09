@@ -215,6 +215,7 @@ final class AppCoordinator: NSObject {
         }
         var settings = viewModel.settings
         settings.validate(visibleFrames: NSScreen.storedVisibleFrames)
+        viewModel.setEditorFrame(settings.editorFrame, visibleFrames: NSScreen.storedVisibleFrames)
         return settings.editorFrame.nsRect
     }
 
@@ -232,7 +233,10 @@ final class AppCoordinator: NSObject {
     }
 
     private func frameIsVisible(_ frame: NSRect) -> Bool {
-        NSScreen.screens.contains { $0.visibleFrame.intersects(frame) }
+        let storedFrame = frame.storedRect
+        return NSScreen.storedVisibleFrames.contains {
+            storedFrame.isUsablyVisible(in: $0)
+        }
     }
 }
 

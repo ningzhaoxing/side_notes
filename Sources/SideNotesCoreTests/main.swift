@@ -525,6 +525,25 @@ func testPinnedCardResizePreservesCustomPosition() throws {
     try expect(resizedFrame.contains("frame.origin.x = frame.maxX - width"), "unpinned right-edge card resize should still preserve its edge anchor")
 }
 
+func testEditorWindowRestoreUsesUsableVisibilityAndPersistsFallback() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
+    let restoredEditorFrame = try sourceSection(source, from: "private func restoredEditorFrame", to: "private func applyEditorFrame")
+    let frameIsVisible = try sourceSection(source, from: "private func frameIsVisible", to: "extension AppCoordinator")
+
+    try expect(
+        restoredEditorFrame.contains("viewModel.setEditorFrame(settings.editorFrame"),
+        "editor fallback frame should be persisted after validation"
+    )
+    try expect(
+        frameIsVisible.contains("isUsablyVisible"),
+        "editor window restore should reject barely visible frames"
+    )
+    try expect(
+        !frameIsVisible.contains(".intersects(frame)"),
+        "editor window restore should not treat a one-pixel intersection as visible"
+    )
+}
+
 func testStaleInstanceTerminatorMatchesLegacyExecutables() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/StaleInstanceTerminator.swift")
 
@@ -954,6 +973,7 @@ let tests: [(String, () throws -> Void)] = [
     ("trigger side setting is editable and applied live", testTriggerSideSettingIsEditableAndAppliedLive),
     ("expanded unpinned card repositions only when trigger side changes", testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges),
     ("pinned card resize preserves custom position", testPinnedCardResizePreservesCustomPosition),
+    ("editor window restore uses usable visibility and persists fallback", testEditorWindowRestoreUsesUsableVisibilityAndPersistsFallback),
     ("stale instance terminator matches legacy executables", testStaleInstanceTerminatorMatchesLegacyExecutables),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
