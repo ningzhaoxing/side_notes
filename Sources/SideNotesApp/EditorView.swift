@@ -209,6 +209,7 @@ private struct DailyGroupEditor: View {
     @ObservedObject var viewModel: PlanViewModel
     @State private var newTaskTitle = ""
     @State private var groupTitle = ""
+    @FocusState private var isTitleFocused: Bool
 
     var body: some View {
         Section {
@@ -235,7 +236,11 @@ private struct DailyGroupEditor: View {
             HStack {
                 TextField("分组名称", text: $groupTitle)
                     .textFieldStyle(.roundedBorder)
+                    .focused($isTitleFocused)
                     .onSubmit(saveGroupTitle)
+                    .onChange(of: isTitleFocused) { _, isFocused in
+                        if !isFocused { saveGroupTitle() }
+                    }
                     .onAppear { groupTitle = group.title }
                     .onChange(of: group.title) { _, newValue in groupTitle = newValue }
 
@@ -270,6 +275,7 @@ private struct DailyTaskEditor: View {
     let taskCount: Int
     @ObservedObject var viewModel: PlanViewModel
     @State private var title = ""
+    @FocusState private var isTitleFocused: Bool
 
     var body: some View {
         HStack {
@@ -283,7 +289,11 @@ private struct DailyTaskEditor: View {
             TextField("任务", text: $title)
                 .textFieldStyle(.roundedBorder)
                 .strikethrough(task.isCompleted)
+                .focused($isTitleFocused)
                 .onSubmit(saveTaskTitle)
+                .onChange(of: isTitleFocused) { _, isFocused in
+                    if !isFocused { saveTaskTitle() }
+                }
                 .onAppear { title = task.title }
                 .onChange(of: task.title) { _, newValue in title = newValue }
 
@@ -318,6 +328,7 @@ private struct LongTermAreaEditor: View {
     @ObservedObject var viewModel: PlanViewModel
     @State private var newItemTitle = ""
     @State private var areaTitle = ""
+    @FocusState private var isTitleFocused: Bool
 
     var body: some View {
         Section {
@@ -344,7 +355,11 @@ private struct LongTermAreaEditor: View {
             HStack {
                 TextField("领域名称", text: $areaTitle)
                     .textFieldStyle(.roundedBorder)
+                    .focused($isTitleFocused)
                     .onSubmit(saveAreaTitle)
+                    .onChange(of: isTitleFocused) { _, isFocused in
+                        if !isFocused { saveAreaTitle() }
+                    }
                     .onAppear { areaTitle = area.title }
                     .onChange(of: area.title) { _, newValue in areaTitle = newValue }
 
@@ -379,12 +394,17 @@ private struct LongTermItemEditor: View {
     let itemCount: Int
     @ObservedObject var viewModel: PlanViewModel
     @State private var title = ""
+    @FocusState private var isTitleFocused: Bool
 
     var body: some View {
         HStack {
             TextField("长期事项", text: $title)
                 .textFieldStyle(.roundedBorder)
+                .focused($isTitleFocused)
                 .onSubmit(saveItemTitle)
+                .onChange(of: isTitleFocused) { _, isFocused in
+                    if !isFocused { saveItemTitle() }
+                }
                 .onAppear { title = item.title }
                 .onChange(of: item.title) { _, newValue in title = newValue }
 

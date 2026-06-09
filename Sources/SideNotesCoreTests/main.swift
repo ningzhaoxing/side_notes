@@ -455,6 +455,23 @@ func testRenameInputsRevertAfterFailedSave() throws {
     try expect(editorSource.contains("if !viewModel.renameLongTermItem(id: item.id, title: title) {\n            title = item.title\n        }"), "editor long-term item title should revert after failed rename")
 }
 
+func testEditorRenameFieldsSaveOnFocusLoss() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/EditorView.swift")
+    let editorSections = [
+        try sourceSection(source, from: "private struct DailyGroupEditor", to: "private struct DailyTaskEditor"),
+        try sourceSection(source, from: "private struct DailyTaskEditor", to: "private struct LongTermAreaEditor"),
+        try sourceSection(source, from: "private struct LongTermAreaEditor", to: "private struct LongTermItemEditor"),
+        try sourceSection(source, from: "private struct LongTermItemEditor", to: "private func saveItemTitle")
+    ]
+
+    for section in editorSections {
+        try expect(section.contains("@FocusState private var isTitleFocused: Bool"), "editor rename field should track focus")
+        try expect(section.contains(".focused($isTitleFocused)"), "editor rename text field should bind focus state")
+        try expect(section.contains(".onChange(of: isTitleFocused)"), "editor rename text field should observe focus changes")
+        try expect(section.contains("if !isFocused { save"), "editor rename text field should save on focus loss")
+    }
+}
+
 func testViewModelSkipsUnchangedRenames() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
     let renameDailyGroup = try sourceSection(source, from: "func renameDailyGroup", to: "func moveDailyGroup")
@@ -932,6 +949,7 @@ let tests: [(String, () throws -> Void)] = [
     ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
     ("rename inputs revert after failed save", testRenameInputsRevertAfterFailedSave),
+    ("editor rename fields save on focus loss", testEditorRenameFieldsSaveOnFocusLoss),
     ("view model skips unchanged renames", testViewModelSkipsUnchangedRenames),
     ("trigger side setting is editable and applied live", testTriggerSideSettingIsEditableAndAppliedLive),
     ("expanded unpinned card repositions only when trigger side changes", testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges),
