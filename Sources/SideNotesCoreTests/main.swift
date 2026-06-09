@@ -402,6 +402,14 @@ func testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges() throws {
     try expect(updateForSettingsChange.contains("applyFrame(edgeFrame(), animate: false)"), "expanded unpinned card should move to the newly selected edge")
 }
 
+func testStaleInstanceTerminatorMatchesLegacyExecutables() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/StaleInstanceTerminator.swift")
+
+    try expect(source.contains("executableURL?.lastPathComponent"), "stale instance cleanup should match legacy bare SideNotes executables")
+    try expect(source.contains("bundleURL?.lastPathComponent"), "stale instance cleanup should match copied SideNotes app bundles")
+    try expect(source.contains("forceTerminate()"), "stale instance cleanup should force-terminate leftover old instances")
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -747,6 +755,7 @@ let tests: [(String, () throws -> Void)] = [
     ("rename inputs revert after failed save", testRenameInputsRevertAfterFailedSave),
     ("trigger side setting is editable and applied live", testTriggerSideSettingIsEditableAndAppliedLive),
     ("expanded unpinned card repositions only when trigger side changes", testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges),
+    ("stale instance terminator matches legacy executables", testStaleInstanceTerminatorMatchesLegacyExecutables),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),
