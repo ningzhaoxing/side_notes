@@ -328,6 +328,17 @@ func testAddInputsClearOnlyAfterSuccessfulSave() throws {
     try expect(editorSource.contains("if viewModel.addLongTermItem(areaID: area.id, title: newItemTitle)"), "editor long-term item input should clear only after successful add")
 }
 
+func testPlanCardWindowShowAndBookmarkAreIdempotent() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let show = try sourceSection(source, from: "func show()", to: "func hide()")
+    let showBookmark = try sourceSection(source, from: "func showBookmark()", to: "func hideBookmark()")
+
+    try expect(show.contains("guard !window.isVisible || isCollapsed else"), "expanded card show should not rebuild or animate an already visible card")
+    try expect(show.contains("window.orderFrontRegardless()"), "expanded card show should still bring the existing window forward")
+    try expect(showBookmark.contains("guard !window.isVisible || !isCollapsed else"), "bookmark show should not rebuild or animate an already visible handle")
+    try expect(showBookmark.contains("window.orderFrontRegardless()"), "bookmark show should still bring the existing handle forward")
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -607,6 +618,7 @@ let tests: [(String, () throws -> Void)] = [
     ("view model rolls back settings when save fails", testViewModelRollsBackSettingsWhenSaveFails),
     ("pin toggle uses settings after save attempt", testPinToggleUsesSettingsAfterSaveAttempt),
     ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
+    ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),

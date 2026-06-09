@@ -33,10 +33,14 @@ final class PlanCardWindowController: NSObject {
     }
 
     func show() {
+        window.level = viewModel.settings.isPinned ? .floating : .normal
+        guard !window.isVisible || isCollapsed else {
+            window.orderFrontRegardless()
+            return
+        }
         isCollapsed = false
         window.isMovableByWindowBackground = true
         installRootView()
-        window.level = viewModel.settings.isPinned ? .floating : .normal
         applyFrame(cardPresentationFrame(), animate: true)
         window.orderFrontRegardless()
     }
@@ -78,6 +82,10 @@ final class PlanCardWindowController: NSObject {
 
     func showBookmark() {
         guard !viewModel.settings.isPinned else { return }
+        guard !window.isVisible || !isCollapsed else {
+            window.orderFrontRegardless()
+            return
+        }
         isCollapsed = true
         window.isMovableByWindowBackground = false
         installBookmarkView()
