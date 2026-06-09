@@ -386,10 +386,10 @@ func testViewModelSkipsUnchangedRenames() throws {
     let renameLongTermArea = try sourceSection(source, from: "func renameLongTermArea", to: "func moveLongTermArea")
     let renameLongTermItem = try sourceSection(source, from: "func renameLongTermItem", to: "func moveLongTermItem")
 
-    try expect(renameDailyGroup.contains("currentDailyGroupTitle(id: id) != title"), "unchanged daily group title should not save and reload")
-    try expect(renameDailyTask.contains("currentDailyTaskTitle(id: id) != title"), "unchanged daily task title should not save and reload")
-    try expect(renameLongTermArea.contains("currentLongTermAreaTitle(id: id) != title"), "unchanged long-term area title should not save and reload")
-    try expect(renameLongTermItem.contains("currentLongTermItemTitle(id: id) != title"), "unchanged long-term item title should not save and reload")
+    try expect(renameDailyGroup.contains("currentDailyGroupTitle(id: id) != title.trimmed"), "unchanged daily group title should not save and reload after trimming input")
+    try expect(renameDailyTask.contains("currentDailyTaskTitle(id: id) != title.trimmed"), "unchanged daily task title should not save and reload after trimming input")
+    try expect(renameLongTermArea.contains("currentLongTermAreaTitle(id: id) != title.trimmed"), "unchanged long-term area title should not save and reload after trimming input")
+    try expect(renameLongTermItem.contains("currentLongTermItemTitle(id: id) != title.trimmed"), "unchanged long-term item title should not save and reload after trimming input")
 }
 
 func testTriggerSideSettingIsEditableAndAppliedLive() throws {
