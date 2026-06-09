@@ -168,11 +168,13 @@ final class PlanCardWindowController: NSObject {
         let width = viewModel.settings.cardFrame.width
         let height = viewModel.settings.cardFrame.height
         var frame = window.frame
-        switch viewModel.settings.triggerSide {
-        case .right:
-            frame.origin.x = frame.maxX - width
-        case .left:
-            break
+        if !viewModel.settings.isPinned {
+            switch viewModel.settings.triggerSide {
+            case .right:
+                frame.origin.x = frame.maxX - width
+            case .left:
+                break
+            }
         }
         frame.size = NSSize(width: width, height: height)
         return frame

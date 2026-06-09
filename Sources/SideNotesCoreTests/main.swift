@@ -424,6 +424,14 @@ func testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges() throws {
     try expect(updateForSettingsChange.contains("applyFrame(edgeFrame(), animate: false)"), "expanded unpinned card should move to the newly selected edge")
 }
 
+func testPinnedCardResizePreservesCustomPosition() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let resizedFrame = try sourceSection(source, from: "private func resizedFrame()", to: "private func bookmarkFrame()")
+
+    try expect(resizedFrame.contains("if !viewModel.settings.isPinned"), "pinned card resize should preserve the user's custom x position")
+    try expect(resizedFrame.contains("frame.origin.x = frame.maxX - width"), "unpinned right-edge card resize should still preserve its edge anchor")
+}
+
 func testStaleInstanceTerminatorMatchesLegacyExecutables() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/StaleInstanceTerminator.swift")
 
@@ -779,6 +787,7 @@ let tests: [(String, () throws -> Void)] = [
     ("view model skips unchanged renames", testViewModelSkipsUnchangedRenames),
     ("trigger side setting is editable and applied live", testTriggerSideSettingIsEditableAndAppliedLive),
     ("expanded unpinned card repositions only when trigger side changes", testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges),
+    ("pinned card resize preserves custom position", testPinnedCardResizePreservesCustomPosition),
     ("stale instance terminator matches legacy executables", testStaleInstanceTerminatorMatchesLegacyExecutables),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
