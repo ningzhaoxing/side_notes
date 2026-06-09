@@ -198,7 +198,10 @@ final class PlanCardWindowController: NSObject {
     }
 
     private func frameIsVisible(_ frame: NSRect) -> Bool {
-        NSScreen.screens.contains { $0.visibleFrame.intersects(frame) }
+        let storedFrame = frame.storedRect
+        return NSScreen.storedVisibleFrames.contains {
+            storedFrame.isUsablyVisible(in: $0)
+        }
     }
 
     private func applyFrame(_ frame: NSRect, animate: Bool) {

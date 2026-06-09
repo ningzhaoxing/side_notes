@@ -525,6 +525,20 @@ func testPinnedCardResizePreservesCustomPosition() throws {
     try expect(resizedFrame.contains("frame.origin.x = frame.maxX - width"), "unpinned right-edge card resize should still preserve its edge anchor")
 }
 
+func testCardWindowVisibilityUsesUsableVisibleArea() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let frameIsVisible = try sourceSection(source, from: "private func frameIsVisible", to: "private func applyFrame")
+
+    try expect(
+        frameIsVisible.contains("isUsablyVisible"),
+        "card window restore should reject barely visible frames"
+    )
+    try expect(
+        !frameIsVisible.contains(".intersects(frame)"),
+        "card window restore should not treat a one-pixel intersection as visible"
+    )
+}
+
 func testEditorWindowRestoreUsesUsableVisibilityAndPersistsFallback() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
     let restoredEditorFrame = try sourceSection(source, from: "private func restoredEditorFrame", to: "private func applyEditorFrame")
@@ -973,6 +987,7 @@ let tests: [(String, () throws -> Void)] = [
     ("trigger side setting is editable and applied live", testTriggerSideSettingIsEditableAndAppliedLive),
     ("expanded unpinned card repositions only when trigger side changes", testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges),
     ("pinned card resize preserves custom position", testPinnedCardResizePreservesCustomPosition),
+    ("card window visibility uses usable visible area", testCardWindowVisibilityUsesUsableVisibleArea),
     ("editor window restore uses usable visibility and persists fallback", testEditorWindowRestoreUsesUsableVisibilityAndPersistsFallback),
     ("stale instance terminator matches legacy executables", testStaleInstanceTerminatorMatchesLegacyExecutables),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
