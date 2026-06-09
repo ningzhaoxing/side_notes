@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     return
                 }
             }
+            StaleInstanceTerminator.terminateAfterOwningLock()
 
             let store = try PlanStore()
             let coordinator = AppCoordinator(store: store)

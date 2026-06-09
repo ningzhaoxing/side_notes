@@ -202,20 +202,31 @@ public final class PlanStore {
     }
 
     public func loadLongTermAreas() throws -> [LongTermArea] {
-        var areas = try database.query(
+        let rows = try database.query(
             """
             SELECT id, title, sort_order, created_at, updated_at
             FROM long_term_areas
             ORDER BY sort_order ASC, created_at ASC
             """
         ) { statement in
-            LongTermArea(
-                id: try UUID.from(sqliteText(statement, 0)),
+            (
+                id: try sqliteText(statement, 0),
                 title: try sqliteText(statement, 1),
                 sortOrder: sqliteInt(statement, 2),
-                items: [],
                 createdAt: Date(timeIntervalSince1970: sqliteDouble(statement, 3)),
                 updatedAt: Date(timeIntervalSince1970: sqliteDouble(statement, 4))
+            )
+        }
+
+        var areas = rows.compactMap { row -> LongTermArea? in
+            guard let id = UUID(uuidString: row.id) else { return nil }
+            return LongTermArea(
+                id: id,
+                title: row.title,
+                sortOrder: row.sortOrder,
+                items: [],
+                createdAt: row.createdAt,
+                updatedAt: row.updatedAt
             )
         }
 
@@ -564,17 +575,26 @@ public final class PlanStore {
     }
 
     private func loadDailyGroups() throws -> [DailyPlanGroup] {
-        var groups = try database.query(
+        let rows = try database.query(
             """
             SELECT id, title, sort_order
             FROM daily_groups
             ORDER BY sort_order ASC
             """
         ) { statement in
-            DailyPlanGroup(
-                id: try UUID.from(sqliteText(statement, 0)),
+            (
+                id: try sqliteText(statement, 0),
                 title: try sqliteText(statement, 1),
-                sortOrder: sqliteInt(statement, 2),
+                sortOrder: sqliteInt(statement, 2)
+            )
+        }
+
+        var groups = rows.compactMap { row -> DailyPlanGroup? in
+            guard let id = UUID(uuidString: row.id) else { return nil }
+            return DailyPlanGroup(
+                id: id,
+                title: row.title,
+                sortOrder: row.sortOrder,
                 tasks: []
             )
         }
@@ -586,7 +606,7 @@ public final class PlanStore {
     }
 
     private func loadDailyTasks(groupID: UUID) throws -> [DailyTask] {
-        try database.query(
+        let rows = try database.query(
             """
             SELECT id, title, is_completed, sort_order, created_at, updated_at
             FROM daily_tasks
@@ -595,8 +615,8 @@ public final class PlanStore {
             """,
             [.text(groupID.uuidString)]
         ) { statement in
-            DailyTask(
-                id: try UUID.from(sqliteText(statement, 0)),
+            (
+                id: try sqliteText(statement, 0),
                 title: try sqliteText(statement, 1),
                 isCompleted: sqliteInt(statement, 2) != 0,
                 sortOrder: sqliteInt(statement, 3),
@@ -604,10 +624,22 @@ public final class PlanStore {
                 updatedAt: Date(timeIntervalSince1970: sqliteDouble(statement, 5))
             )
         }
+
+        return rows.compactMap { row in
+            guard let id = UUID(uuidString: row.id) else { return nil }
+            return DailyTask(
+                id: id,
+                title: row.title,
+                isCompleted: row.isCompleted,
+                sortOrder: row.sortOrder,
+                createdAt: row.createdAt,
+                updatedAt: row.updatedAt
+            )
+        }
     }
 
     private func loadLongTermItems(areaID: UUID) throws -> [LongTermItem] {
-        try database.query(
+        let rows = try database.query(
             """
             SELECT id, title, sort_order, created_at, updated_at
             FROM long_term_items
@@ -616,12 +648,23 @@ public final class PlanStore {
             """,
             [.text(areaID.uuidString)]
         ) { statement in
-            LongTermItem(
-                id: try UUID.from(sqliteText(statement, 0)),
+            (
+                id: try sqliteText(statement, 0),
                 title: try sqliteText(statement, 1),
                 sortOrder: sqliteInt(statement, 2),
                 createdAt: Date(timeIntervalSince1970: sqliteDouble(statement, 3)),
                 updatedAt: Date(timeIntervalSince1970: sqliteDouble(statement, 4))
+            )
+        }
+
+        return rows.compactMap { row in
+            guard let id = UUID(uuidString: row.id) else { return nil }
+            return LongTermItem(
+                id: id,
+                title: row.title,
+                sortOrder: row.sortOrder,
+                createdAt: row.createdAt,
+                updatedAt: row.updatedAt
             )
         }
     }

@@ -341,6 +341,26 @@ func testPlanStoreSkipsCorruptArchiveSnapshotRows() throws {
     try expectEqual(searchResults.map { $0.id }, [goodArchive.id], "search ignores corrupt archive rows")
 }
 
+func testPlanStoreSkipsCorruptDailyRowsWhileKeepingGoodData() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let group = try store.addDailyGroup(title: "Work")
+    _ = try store.addDailyTask(groupID: group.id, title: "Keep this task")
+    try executeSQLite(url: url, sql: "INSERT INTO daily_groups (id, title, sort_order) VALUES ('not-a-uuid', 'Broken group', 1);")
+    try executeSQLite(
+        url: url,
+        sql: """
+        INSERT INTO daily_tasks (id, group_id, title, is_completed, sort_order, created_at, updated_at)
+        VALUES ('not-a-task-uuid', '\(group.id.uuidString)', 'Broken task', 0, 1, 1700000000, 1700000000);
+        """
+    )
+
+    let plan = try store.loadDailyPlan()
+
+    try expectEqual(plan.groups.map { $0.title }, ["Work"], "corrupt daily group rows skipped")
+    try expectEqual(plan.groups[0].tasks.map { $0.title }, ["Keep this task"], "corrupt daily task rows skipped")
+}
+
 func testPlanStoreEditsDeletesAndReordersDailyPlan() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -427,6 +447,32 @@ func testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder() thro
     try expectEqual(areas.map { $0.sortOrder }, [0, 1], "long-term area sort orders unchanged after missing reorder")
 }
 
+func testPlanStoreSkipsCorruptLongTermRowsWhileKeepingGoodData() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let area = try store.addLongTermArea(title: "Reading")
+    _ = try store.addLongTermItem(areaID: area.id, title: "Keep this item")
+    try executeSQLite(
+        url: url,
+        sql: """
+        INSERT INTO long_term_areas (id, title, sort_order, created_at, updated_at)
+        VALUES ('not-a-uuid', 'Broken area', 1, 1700000000, 1700000000);
+        """
+    )
+    try executeSQLite(
+        url: url,
+        sql: """
+        INSERT INTO long_term_items (id, area_id, title, sort_order, created_at, updated_at)
+        VALUES ('not-an-item-uuid', '\(area.id.uuidString)', 'Broken item', 1, 1700000000, 1700000000);
+        """
+    )
+
+    let areas = try store.loadLongTermAreas()
+
+    try expectEqual(areas.map { $0.title }, ["Reading"], "corrupt long-term area rows skipped")
+    try expectEqual(areas[0].items.map { $0.title }, ["Keep this item"], "corrupt long-term item rows skipped")
+}
+
 let tests: [(String, () throws -> Void)] = [
     ("default settings are readable and usable", testDefaultSettingsAreReadableAndUsable),
     ("settings decode missing keys uses readable defaults", testSettingsDecodeMissingKeysUsesReadableDefaults),
@@ -443,10 +489,12 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store persists long-term areas and items", testPlanStorePersistsLongTermAreasAndItems),
     ("plan store archives current plan and searches history", testPlanStoreArchivesCurrentPlanAndSearchesHistory),
     ("plan store skips corrupt archive snapshot rows", testPlanStoreSkipsCorruptArchiveSnapshotRows),
+    ("plan store skips corrupt daily rows while keeping good data", testPlanStoreSkipsCorruptDailyRowsWhileKeepingGoodData),
     ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
     ("plan store rejects reorder of missing daily group without changing order", testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder),
     ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas),
-    ("plan store rejects reorder of missing long-term area without changing order", testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder)
+    ("plan store rejects reorder of missing long-term area without changing order", testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder),
+    ("plan store skips corrupt long-term rows while keeping good data", testPlanStoreSkipsCorruptLongTermRowsWhileKeepingGoodData)
 ]
 
 var failures: [String] = []
