@@ -46,9 +46,11 @@ The app runs as a menu-bar accessory and opens with the card pinned by default, 
 
 - The front side shows today's custom groups and checkable tasks.
 - The back side shows long-term areas and items.
+- Add, rename, check off, and delete items directly on the floating card.
 - Drag the small handle in the lower-right corner of the card to resize it.
 - Use `编辑` or the menu-bar item to open the editor.
 - Use `设置` on the card to open the `外观` tab directly.
+- Use `退出` on the card or the menu-bar item to quit the app.
 - Use `归档` to archive the current day and start a blank plan.
 - Use the editor's `外观` tab to change card opacity and corner radius.
 

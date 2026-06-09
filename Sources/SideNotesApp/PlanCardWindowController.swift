@@ -10,6 +10,7 @@ final class PlanCardWindowController: NSObject {
     var onPinToggle: ((Bool) -> Void)?
     var onEdit: (() -> Void)?
     var onSettings: (() -> Void)?
+    var onQuit: (() -> Void)?
 
     init(viewModel: PlanViewModel) {
         self.viewModel = viewModel
@@ -98,6 +99,9 @@ final class PlanCardWindowController: NSObject {
                 onSettings: { [weak self] in
                     self?.onSettings?()
                 },
+                onQuit: { [weak self] in
+                    self?.onQuit?()
+                },
                 onResize: { [weak self] size in
                     self?.resizeCard(to: size)
                 }
@@ -106,9 +110,11 @@ final class PlanCardWindowController: NSObject {
     }
 
     private func installBookmarkView() {
-        window.contentView = DrawerHandleButton(frame: NSRect(x: 0, y: 0, width: 38, height: 112)) { [weak self] in
+        window.contentView = DrawerHandleButton(frame: NSRect(x: 0, y: 0, width: 38, height: 112), onActivate: { [weak self] in
             self?.show()
-        }
+        }, onQuit: { [weak self] in
+            self?.onQuit?()
+        })
     }
 
     private func visibleFrame() -> NSRect {
@@ -166,10 +172,12 @@ private final class CardWindow: NSWindow {
 
 private final class DrawerHandleButton: NSButton {
     private let onActivate: () -> Void
+    private let onQuit: () -> Void
     private var trackingArea: NSTrackingArea?
 
-    init(frame: NSRect, onActivate: @escaping () -> Void) {
+    init(frame: NSRect, onActivate: @escaping () -> Void, onQuit: @escaping () -> Void) {
         self.onActivate = onActivate
+        self.onQuit = onQuit
         super.init(frame: frame)
         wantsLayer = true
         title = ""
@@ -181,6 +189,7 @@ private final class DrawerHandleButton: NSButton {
         sendAction(on: [.leftMouseDown])
         toolTip = "显示 SideNotes 计划卡片"
         setAccessibilityLabel("计划")
+        installMenu()
     }
 
     required init?(coder: NSCoder) {
@@ -213,6 +222,22 @@ private final class DrawerHandleButton: NSButton {
 
     @objc private func activate() {
         onActivate()
+    }
+
+    @objc private func quitSideNotes() {
+        onQuit()
+    }
+
+    private func installMenu() {
+        let menu = NSMenu()
+        let showItem = NSMenuItem(title: "显示计划卡", action: #selector(activate), keyEquivalent: "")
+        showItem.target = self
+        menu.addItem(showItem)
+        menu.addItem(.separator())
+        let quitItem = NSMenuItem(title: "退出 SideNotes", action: #selector(quitSideNotes), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+        self.menu = menu
     }
 
     override func mouseEntered(with event: NSEvent) {

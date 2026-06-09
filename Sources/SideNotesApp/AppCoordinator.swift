@@ -27,6 +27,9 @@ final class AppCoordinator: NSObject {
         cardController.onSettings = { [weak self] in
             self?.showEditor(tab: .appearance)
         }
+        cardController.onQuit = { [weak self] in
+            self?.quit()
+        }
         DistributedNotificationCenter.default().addObserver(
             self,
             selector: #selector(showCardFromDistributedNotification(_:)),
@@ -99,6 +102,12 @@ final class AppCoordinator: NSObject {
     }
 
     @objc private func quitFromMenu() {
+        quit()
+    }
+
+    private func quit() {
+        cancelPendingHide()
+        edgeTrigger?.stop()
         NSApp.terminate(nil)
     }
 

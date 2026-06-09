@@ -11,8 +11,18 @@ APP_NAME="SideNotes.app"
 SOURCE_APP="$ROOT_DIR/Build/$APP_NAME"
 TARGET_APP="$INSTALL_DIR/$APP_NAME"
 
+if [[ "${SIDENOTES_SKIP_QUIT_RUNNING:-0}" != "1" ]]; then
+  osascript -e 'tell application id "com.ningzhaoxing.sidenotes" to quit' >/dev/null 2>&1 || true
+  killall SideNotes >/dev/null 2>&1 || true
+  sleep 0.5
+fi
+
 mkdir -p "$INSTALL_DIR"
 rm -rf "$TARGET_APP"
 ditto "$SOURCE_APP" "$TARGET_APP"
+xattr -cr "$TARGET_APP" 2>/dev/null || true
+if command -v codesign >/dev/null 2>&1; then
+  codesign --force --deep --sign - "$TARGET_APP" >/dev/null
+fi
 
 echo "$TARGET_APP"
