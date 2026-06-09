@@ -5,6 +5,7 @@ import SideNotesCore
 @MainActor
 final class AppCoordinator: NSObject {
     static let showCardNotificationName = Notification.Name("com.ningzhaoxing.sidenotes.showCard")
+    static let quitNotificationName = Notification.Name("com.ningzhaoxing.sidenotes.quit")
 
     private let viewModel: PlanViewModel
     private let cardController: PlanCardWindowController
@@ -36,6 +37,12 @@ final class AppCoordinator: NSObject {
             self,
             selector: #selector(showCardFromDistributedNotification(_:)),
             name: Self.showCardNotificationName,
+            object: nil
+        )
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(quitFromDistributedNotification(_:)),
+            name: Self.quitNotificationName,
             object: nil
         )
     }
@@ -97,6 +104,10 @@ final class AppCoordinator: NSObject {
 
     @objc private func showCardFromDistributedNotification(_ notification: Notification) {
         showCard()
+    }
+
+    @objc private func quitFromDistributedNotification(_ notification: Notification) {
+        quit()
     }
 
     @objc private func showEditorFromMenu() {

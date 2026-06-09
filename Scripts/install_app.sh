@@ -12,6 +12,8 @@ SOURCE_APP="$ROOT_DIR/Build/$APP_NAME"
 TARGET_APP="$INSTALL_DIR/$APP_NAME"
 
 if [[ "${SIDENOTES_SKIP_QUIT_RUNNING:-0}" != "1" ]]; then
+  SIDE_NOTES_REQUEST_QUIT_EXISTING=1 "$SOURCE_APP/Contents/MacOS/SideNotes" >/dev/null 2>&1 || true
+  sleep 0.5
   osascript -e 'tell application id "com.ningzhaoxing.sidenotes" to quit' >/dev/null 2>&1 || true
   killall SideNotes >/dev/null 2>&1 || true
   sleep 0.5

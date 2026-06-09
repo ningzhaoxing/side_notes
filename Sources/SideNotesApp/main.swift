@@ -1,5 +1,14 @@
 import AppKit
+import Darwin
 import SideNotesCore
+
+if ProcessInfo.processInfo.environment["SIDE_NOTES_REQUEST_QUIT_EXISTING"] == "1" {
+    DistributedNotificationCenter.default().post(
+        name: AppCoordinator.quitNotificationName,
+        object: nil
+    )
+    exit(0)
+}
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var coordinator: AppCoordinator?
