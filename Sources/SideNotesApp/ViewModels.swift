@@ -101,14 +101,14 @@ final class PlanViewModel: ObservableObject {
     }
 
     func addDailyGroup(title: String) -> Bool {
-        guard !title.trimmed.isEmpty else { return false }
+        guard !title.trimmed.isEmpty else { return rejectBlankInput() }
         return performAndReload {
             _ = try store.addDailyGroup(title: title.trimmed)
         }
     }
 
     func renameDailyGroup(id: UUID, title: String) -> Bool {
-        guard !title.trimmed.isEmpty else { return false }
+        guard !title.trimmed.isEmpty else { return rejectBlankInput() }
         guard currentDailyGroupTitle(id: id) != title.trimmed else { return true }
         return performAndReload {
             try store.renameDailyGroup(id: id, title: title.trimmed)
@@ -128,14 +128,14 @@ final class PlanViewModel: ObservableObject {
     }
 
     func addDailyTask(groupID: UUID, title: String) -> Bool {
-        guard !title.trimmed.isEmpty else { return false }
+        guard !title.trimmed.isEmpty else { return rejectBlankInput() }
         return performAndReload {
             _ = try store.addDailyTask(groupID: groupID, title: title.trimmed)
         }
     }
 
     func renameDailyTask(id: UUID, title: String) -> Bool {
-        guard !title.trimmed.isEmpty else { return false }
+        guard !title.trimmed.isEmpty else { return rejectBlankInput() }
         guard currentDailyTaskTitle(id: id) != title.trimmed else { return true }
         return performAndReload {
             try store.renameDailyTask(id: id, title: title.trimmed)
@@ -161,14 +161,14 @@ final class PlanViewModel: ObservableObject {
     }
 
     func addLongTermArea(title: String) -> Bool {
-        guard !title.trimmed.isEmpty else { return false }
+        guard !title.trimmed.isEmpty else { return rejectBlankInput() }
         return performAndReload {
             _ = try store.addLongTermArea(title: title.trimmed)
         }
     }
 
     func renameLongTermArea(id: UUID, title: String) -> Bool {
-        guard !title.trimmed.isEmpty else { return false }
+        guard !title.trimmed.isEmpty else { return rejectBlankInput() }
         guard currentLongTermAreaTitle(id: id) != title.trimmed else { return true }
         return performAndReload {
             try store.renameLongTermArea(id: id, title: title.trimmed)
@@ -188,14 +188,14 @@ final class PlanViewModel: ObservableObject {
     }
 
     func addLongTermItem(areaID: UUID, title: String) -> Bool {
-        guard !title.trimmed.isEmpty else { return false }
+        guard !title.trimmed.isEmpty else { return rejectBlankInput() }
         return performAndReload {
             _ = try store.addLongTermItem(areaID: areaID, title: title.trimmed)
         }
     }
 
     func renameLongTermItem(id: UUID, title: String) -> Bool {
-        guard !title.trimmed.isEmpty else { return false }
+        guard !title.trimmed.isEmpty else { return rejectBlankInput() }
         guard currentLongTermItemTitle(id: id) != title.trimmed else { return true }
         return performAndReload {
             try store.renameLongTermItem(id: id, title: title.trimmed)
@@ -236,6 +236,11 @@ final class PlanViewModel: ObservableObject {
             settings = persistedSettings
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func rejectBlankInput() -> Bool {
+        errorMessage = nil
+        return false
     }
 
     @discardableResult

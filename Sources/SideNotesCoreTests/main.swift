@@ -342,6 +342,36 @@ func testViewModelReloadsAfterFailedDataOperations() throws {
     try expect(performAndReload.contains("errorMessage = message"), "failed data operations should restore the original error after reloading")
 }
 
+func testViewModelClearsStaleErrorsOnBlankInput() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
+    let blankInputFunctions = [
+        try sourceSection(source, from: "func addDailyGroup", to: "func renameDailyGroup"),
+        try sourceSection(source, from: "func renameDailyGroup", to: "func moveDailyGroup"),
+        try sourceSection(source, from: "func addDailyTask", to: "func renameDailyTask"),
+        try sourceSection(source, from: "func renameDailyTask", to: "func moveDailyTask"),
+        try sourceSection(source, from: "func addLongTermArea", to: "func renameLongTermArea"),
+        try sourceSection(source, from: "func renameLongTermArea", to: "func moveLongTermArea"),
+        try sourceSection(source, from: "func addLongTermItem", to: "func renameLongTermItem"),
+        try sourceSection(source, from: "func renameLongTermItem", to: "func moveLongTermItem")
+    ]
+
+    try expect(source.contains("private func rejectBlankInput() -> Bool"), "view model should have a shared blank input rejection path")
+    try expect(
+        source.contains("errorMessage = nil"),
+        "blank input rejection should clear stale user-visible errors"
+    )
+    for functionSource in blankInputFunctions {
+        try expect(
+            functionSource.contains("return rejectBlankInput()"),
+            "blank input guard should clear stale errors before returning false"
+        )
+        try expect(
+            !functionSource.contains("else { return false }"),
+            "blank input guard should not leave old error messages visible"
+        )
+    }
+}
+
 func testPinToggleUsesSettingsAfterSaveAttempt() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
     let controls = try sourceSection(source, from: "private var controls", to: "private func toolbarButton")
@@ -845,6 +875,7 @@ let tests: [(String, () throws -> Void)] = [
     ("view model reload preserves archive search query", testViewModelReloadPreservesArchiveSearchQuery),
     ("view model rolls back settings when save fails", testViewModelRollsBackSettingsWhenSaveFails),
     ("view model reloads after failed data operations", testViewModelReloadsAfterFailedDataOperations),
+    ("view model clears stale errors on blank input", testViewModelClearsStaleErrorsOnBlankInput),
     ("pin toggle uses settings after save attempt", testPinToggleUsesSettingsAfterSaveAttempt),
     ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
