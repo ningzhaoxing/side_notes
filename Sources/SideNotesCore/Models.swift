@@ -209,6 +209,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         cardCornerRadius = min(48, max(4, cardCornerRadius))
         cardFrame.width = min(720, max(260, cardFrame.width))
         cardFrame.height = min(900, max(360, cardFrame.height))
+        editorFrame.width = min(1_400, max(640, editorFrame.width))
+        editorFrame.height = min(1_100, max(480, editorFrame.height))
 
         guard !visibleFrames.isEmpty else {
             return
@@ -224,11 +226,36 @@ public struct AppSettings: Codable, Equatable, Sendable {
                 height: defaultFrame.height
             )
         }
+
+        if !visibleFrames.contains(where: { editorFrame.intersects($0) }) {
+            let frame = visibleFrames[0]
+            let defaultFrame = AppSettings.defaults().editorFrame
+            if defaultFrame.intersects(frame) {
+                editorFrame = defaultFrame
+            } else {
+                editorFrame = StoredRect(
+                    x: frame.x + max(24, (frame.width - defaultFrame.width) / 2),
+                    y: frame.y + max(24, (frame.height - defaultFrame.height) / 2),
+                    width: defaultFrame.width,
+                    height: defaultFrame.height
+                )
+            }
+        }
     }
 
     public mutating func setCardSize(width: Double, height: Double) {
         cardFrame.width = width
         cardFrame.height = height
+        validate()
+    }
+
+    public mutating func setCardFrame(_ frame: StoredRect) {
+        cardFrame = frame
+        validate()
+    }
+
+    public mutating func setEditorFrame(_ frame: StoredRect) {
+        editorFrame = frame
         validate()
     }
 }

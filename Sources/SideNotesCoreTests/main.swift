@@ -55,6 +55,7 @@ func testAppearanceSettingsClampToReadableRanges() throws {
 func testWindowFrameOutsideScreensFallsBackToDefault() throws {
     var settings = AppSettings.defaults()
     settings.cardFrame = StoredRect(x: -9_000, y: -9_000, width: 320, height: 520)
+    settings.editorFrame = StoredRect(x: -8_000, y: -8_000, width: 920, height: 680)
 
     settings.validate(visibleFrames: [
         StoredRect(x: 0, y: 0, width: 1_440, height: 900)
@@ -64,6 +65,10 @@ func testWindowFrameOutsideScreensFallsBackToDefault() throws {
     try expectEqual(settings.cardFrame.y, 160, accuracy: 0.001, "fallback y")
     try expectEqual(settings.cardFrame.width, 320, accuracy: 0.001, "fallback width")
     try expectEqual(settings.cardFrame.height, 580, accuracy: 0.001, "fallback height")
+    try expectEqual(settings.editorFrame.x, 220, accuracy: 0.001, "fallback editor x")
+    try expectEqual(settings.editorFrame.y, 140, accuracy: 0.001, "fallback editor y")
+    try expectEqual(settings.editorFrame.width, 920, accuracy: 0.001, "fallback editor width")
+    try expectEqual(settings.editorFrame.height, 680, accuracy: 0.001, "fallback editor height")
 }
 
 func testCardSizeUpdatesClampToReadableRanges() throws {
@@ -80,6 +85,22 @@ func testCardSizeUpdatesClampToReadableRanges() throws {
     settings.setCardSize(width: 420, height: 640)
     try expectEqual(settings.cardFrame.width, 420, accuracy: 0.001, "custom card width")
     try expectEqual(settings.cardFrame.height, 640, accuracy: 0.001, "custom card height")
+}
+
+func testWindowFrameUpdatesPreservePositionAndClampSize() throws {
+    var settings = AppSettings.defaults()
+
+    settings.setCardFrame(StoredRect(x: 120, y: 240, width: 1_000, height: 1_200))
+    try expectEqual(settings.cardFrame.x, 120, accuracy: 0.001, "card frame x preserved")
+    try expectEqual(settings.cardFrame.y, 240, accuracy: 0.001, "card frame y preserved")
+    try expectEqual(settings.cardFrame.width, 720, accuracy: 0.001, "card frame width clamped")
+    try expectEqual(settings.cardFrame.height, 900, accuracy: 0.001, "card frame height clamped")
+
+    settings.setEditorFrame(StoredRect(x: 260, y: 180, width: 2_000, height: 2_000))
+    try expectEqual(settings.editorFrame.x, 260, accuracy: 0.001, "editor frame x preserved")
+    try expectEqual(settings.editorFrame.y, 180, accuracy: 0.001, "editor frame y preserved")
+    try expectEqual(settings.editorFrame.width, 1_400, accuracy: 0.001, "editor frame width clamped")
+    try expectEqual(settings.editorFrame.height, 1_100, accuracy: 0.001, "editor frame height clamped")
 }
 
 func testArchivePreservesGroupsTasksOrderAndCompletion() throws {
@@ -168,6 +189,8 @@ func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     settings.visibleSide = .back
     settings.cardOpacity = 0.52
     settings.cardCornerRadius = 36
+    settings.cardFrame = StoredRect(x: 99, y: 88, width: 420, height: 640)
+    settings.editorFrame = StoredRect(x: 77, y: 66, width: 880, height: 620)
     try store.saveSettings(settings)
 
     let reopened = try PlanStore(databaseURL: url)
@@ -183,6 +206,8 @@ func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     try expectEqual(reopenedSettings.visibleSide, .back, "visible side persisted")
     try expectEqual(reopenedSettings.cardOpacity, 0.52, accuracy: 0.001, "opacity persisted")
     try expectEqual(reopenedSettings.cardCornerRadius, 36, accuracy: 0.001, "corner radius persisted")
+    try expectEqual(reopenedSettings.cardFrame, StoredRect(x: 99, y: 88, width: 420, height: 640), "card frame persisted")
+    try expectEqual(reopenedSettings.editorFrame, StoredRect(x: 77, y: 66, width: 880, height: 620), "editor frame persisted")
 }
 
 func testPlanStorePersistsLongTermAreasAndItems() throws {
@@ -276,6 +301,7 @@ let tests: [(String, () throws -> Void)] = [
     ("appearance settings clamp to readable ranges", testAppearanceSettingsClampToReadableRanges),
     ("window frame outside screens falls back to default", testWindowFrameOutsideScreensFallsBackToDefault),
     ("card size updates clamp to readable ranges", testCardSizeUpdatesClampToReadableRanges),
+    ("window frame updates preserve position and clamp size", testWindowFrameUpdatesPreservePositionAndClampSize),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),

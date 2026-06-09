@@ -12,9 +12,11 @@ final class AppCoordinator: NSObject {
     private var edgeTrigger: EdgeTriggerController?
     private var statusItem: NSStatusItem?
     private var pendingHideWorkItem: DispatchWorkItem?
+    private var isApplyingEditorFrame = false
 
     init(store: PlanStore) {
         let viewModel = PlanViewModel(store: store)
+        viewModel.validateWindowFrames(visibleFrames: NSScreen.storedVisibleFrames)
         self.viewModel = viewModel
         cardController = PlanCardWindowController(viewModel: viewModel)
         super.init()
@@ -82,7 +84,7 @@ final class AppCoordinator: NSObject {
             viewModel.editorTab = tab
         }
         if !editorWindow.isVisible {
-            editorWindow.center()
+            applyEditorFrame(restoredEditorFrame())
         }
         editorWindow.makeKeyAndOrderFront(nil)
         editorWindow.orderFrontRegardless()
@@ -142,7 +144,7 @@ final class AppCoordinator: NSObject {
         window.isReleasedWhenClosed = false
         window.level = .floating
         window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-        window.center()
+        window.delegate = self
         window.contentView = NSHostingView(rootView: EditorView(viewModel: viewModel))
         return window
     }
@@ -161,5 +163,48 @@ final class AppCoordinator: NSObject {
         }
         item.menu = menu
         statusItem = item
+    }
+
+    private func restoredEditorFrame() -> NSRect {
+        let frame = viewModel.settings.editorFrame.nsRect
+        if frameIsVisible(frame) {
+            return frame
+        }
+        var settings = viewModel.settings
+        settings.validate(visibleFrames: NSScreen.storedVisibleFrames)
+        return settings.editorFrame.nsRect
+    }
+
+    private func applyEditorFrame(_ frame: NSRect) {
+        isApplyingEditorFrame = true
+        editorWindow.setFrame(frame, display: false)
+        DispatchQueue.main.async { [weak self] in
+            self?.isApplyingEditorFrame = false
+        }
+    }
+
+    private func persistEditorFrameIfNeeded(_ window: NSWindow) {
+        guard window === editorWindow, !isApplyingEditorFrame else { return }
+        viewModel.setEditorFrame(window.frame.storedRect, visibleFrames: NSScreen.storedVisibleFrames)
+    }
+
+    private func frameIsVisible(_ frame: NSRect) -> Bool {
+        NSScreen.screens.contains { $0.visibleFrame.intersects(frame) }
+    }
+}
+
+extension AppCoordinator: NSWindowDelegate {
+    nonisolated func windowDidMove(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        Task { @MainActor in
+            persistEditorFrameIfNeeded(window)
+        }
+    }
+
+    nonisolated func windowDidResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        Task { @MainActor in
+            persistEditorFrameIfNeeded(window)
+        }
     }
 }

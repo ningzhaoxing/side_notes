@@ -7,6 +7,7 @@ final class PlanCardWindowController: NSObject {
     private let viewModel: PlanViewModel
     private let window: NSWindow
     private var isCollapsed = false
+    private var isApplyingProgrammaticFrame = false
     var onPinToggle: ((Bool) -> Void)?
     var onEdit: (() -> Void)?
     var onSettings: (() -> Void)?
@@ -27,6 +28,7 @@ final class PlanCardWindowController: NSObject {
         window.level = viewModel.settings.isPinned ? .floating : .normal
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.isMovableByWindowBackground = true
+        window.delegate = self
         installRootView()
     }
 
@@ -35,7 +37,7 @@ final class PlanCardWindowController: NSObject {
         window.isMovableByWindowBackground = true
         installRootView()
         window.level = viewModel.settings.isPinned ? .floating : .normal
-        window.setFrame(visibleFrame(), display: true, animate: true)
+        applyFrame(cardPresentationFrame(), animate: true)
         window.orderFrontRegardless()
     }
 
@@ -68,9 +70,10 @@ final class PlanCardWindowController: NSObject {
     }
 
     func resizeCard(to size: CGSize) {
-        viewModel.setCardSize(size)
+        let frame = StoredRect(x: window.frame.minX, y: window.frame.minY, width: size.width, height: size.height)
+        viewModel.setCardFrame(frame, visibleFrames: NSScreen.storedVisibleFrames)
         installRootView()
-        window.setFrame(resizedFrame(), display: true)
+        applyFrame(resizedFrame(), animate: false)
     }
 
     func showBookmark() {
@@ -79,7 +82,7 @@ final class PlanCardWindowController: NSObject {
         window.isMovableByWindowBackground = false
         installBookmarkView()
         window.level = .floating
-        window.setFrame(bookmarkFrame(), display: true, animate: true)
+        applyFrame(bookmarkFrame(), animate: true)
         window.orderFrontRegardless()
     }
 
@@ -120,7 +123,15 @@ final class PlanCardWindowController: NSObject {
         })
     }
 
-    private func visibleFrame() -> NSRect {
+    private func cardPresentationFrame() -> NSRect {
+        let storedFrame = viewModel.settings.cardFrame.nsRect
+        if viewModel.settings.isPinned, frameIsVisible(storedFrame) {
+            return storedFrame
+        }
+        return edgeFrame()
+    }
+
+    private func edgeFrame() -> NSRect {
         let screen = NSScreen.screens.first { $0.visibleFrame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let frame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1_440, height: 900)
         let width = viewModel.settings.cardFrame.width
@@ -167,8 +178,39 @@ final class PlanCardWindowController: NSObject {
         return NSRect(x: x, y: y, width: width, height: height)
     }
 
+    private func frameIsVisible(_ frame: NSRect) -> Bool {
+        NSScreen.screens.contains { $0.visibleFrame.intersects(frame) }
+    }
+
+    private func applyFrame(_ frame: NSRect, animate: Bool) {
+        isApplyingProgrammaticFrame = true
+        window.setFrame(frame, display: true, animate: animate)
+        DispatchQueue.main.asyncAfter(deadline: .now() + (animate ? 0.45 : 0.05)) { [weak self] in
+            self?.isApplyingProgrammaticFrame = false
+        }
+    }
+
+    private func persistCardFrameIfNeeded() {
+        guard !isApplyingProgrammaticFrame, !isCollapsed else { return }
+        viewModel.setCardFrame(window.frame.storedRect, visibleFrames: NSScreen.storedVisibleFrames)
+    }
+
     private var isTextEditing: Bool {
         window.firstResponder is NSTextView
+    }
+}
+
+extension PlanCardWindowController: NSWindowDelegate {
+    nonisolated func windowDidMove(_ notification: Notification) {
+        Task { @MainActor in
+            persistCardFrameIfNeeded()
+        }
+    }
+
+    nonisolated func windowDidResize(_ notification: Notification) {
+        Task { @MainActor in
+            persistCardFrameIfNeeded()
+        }
     }
 }
 

@@ -72,6 +72,26 @@ final class PlanViewModel: ObservableObject {
         saveSettings()
     }
 
+    func setCardFrame(_ frame: StoredRect, visibleFrames: [StoredRect] = []) {
+        settings.cardFrame = frame
+        settings.validate(visibleFrames: visibleFrames)
+        saveSettings()
+    }
+
+    func setEditorFrame(_ frame: StoredRect, visibleFrames: [StoredRect] = []) {
+        settings.editorFrame = frame
+        settings.validate(visibleFrames: visibleFrames)
+        saveSettings()
+    }
+
+    func validateWindowFrames(visibleFrames: [StoredRect]) {
+        let original = settings
+        settings.validate(visibleFrames: visibleFrames)
+        if settings != original {
+            saveSettings()
+        }
+    }
+
     func addDailyGroup(title: String) {
         guard !title.trimmed.isEmpty else { return }
         performAndReload {
