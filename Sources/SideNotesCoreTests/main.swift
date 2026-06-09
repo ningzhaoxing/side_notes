@@ -379,6 +379,19 @@ func testRenameInputsRevertAfterFailedSave() throws {
     try expect(editorSource.contains("if !viewModel.renameLongTermItem(id: item.id, title: title) {\n            title = item.title\n        }"), "editor long-term item title should revert after failed rename")
 }
 
+func testViewModelSkipsUnchangedRenames() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
+    let renameDailyGroup = try sourceSection(source, from: "func renameDailyGroup", to: "func moveDailyGroup")
+    let renameDailyTask = try sourceSection(source, from: "func renameDailyTask", to: "func moveDailyTask")
+    let renameLongTermArea = try sourceSection(source, from: "func renameLongTermArea", to: "func moveLongTermArea")
+    let renameLongTermItem = try sourceSection(source, from: "func renameLongTermItem", to: "func moveLongTermItem")
+
+    try expect(renameDailyGroup.contains("currentDailyGroupTitle(id: id) != title"), "unchanged daily group title should not save and reload")
+    try expect(renameDailyTask.contains("currentDailyTaskTitle(id: id) != title"), "unchanged daily task title should not save and reload")
+    try expect(renameLongTermArea.contains("currentLongTermAreaTitle(id: id) != title"), "unchanged long-term area title should not save and reload")
+    try expect(renameLongTermItem.contains("currentLongTermItemTitle(id: id) != title"), "unchanged long-term item title should not save and reload")
+}
+
 func testTriggerSideSettingIsEditableAndAppliedLive() throws {
     let viewModelSource = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
     let editorSource = try readWorkspaceFile("Sources/SideNotesApp/EditorView.swift")
@@ -763,6 +776,7 @@ let tests: [(String, () throws -> Void)] = [
     ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
     ("rename inputs revert after failed save", testRenameInputsRevertAfterFailedSave),
+    ("view model skips unchanged renames", testViewModelSkipsUnchangedRenames),
     ("trigger side setting is editable and applied live", testTriggerSideSettingIsEditableAndAppliedLive),
     ("expanded unpinned card repositions only when trigger side changes", testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges),
     ("stale instance terminator matches legacy executables", testStaleInstanceTerminatorMatchesLegacyExecutables),

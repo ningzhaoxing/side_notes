@@ -109,6 +109,7 @@ final class PlanViewModel: ObservableObject {
 
     func renameDailyGroup(id: UUID, title: String) -> Bool {
         guard !title.trimmed.isEmpty else { return false }
+        guard currentDailyGroupTitle(id: id) != title else { return true }
         return performAndReload {
             try store.renameDailyGroup(id: id, title: title.trimmed)
         }
@@ -135,6 +136,7 @@ final class PlanViewModel: ObservableObject {
 
     func renameDailyTask(id: UUID, title: String) -> Bool {
         guard !title.trimmed.isEmpty else { return false }
+        guard currentDailyTaskTitle(id: id) != title else { return true }
         return performAndReload {
             try store.renameDailyTask(id: id, title: title.trimmed)
         }
@@ -167,6 +169,7 @@ final class PlanViewModel: ObservableObject {
 
     func renameLongTermArea(id: UUID, title: String) -> Bool {
         guard !title.trimmed.isEmpty else { return false }
+        guard currentLongTermAreaTitle(id: id) != title else { return true }
         return performAndReload {
             try store.renameLongTermArea(id: id, title: title.trimmed)
         }
@@ -193,6 +196,7 @@ final class PlanViewModel: ObservableObject {
 
     func renameLongTermItem(id: UUID, title: String) -> Bool {
         guard !title.trimmed.isEmpty else { return false }
+        guard currentLongTermItemTitle(id: id) != title else { return true }
         return performAndReload {
             try store.renameLongTermItem(id: id, title: title.trimmed)
         }
@@ -257,6 +261,28 @@ final class PlanViewModel: ObservableObject {
                     || group.tasks.contains { $0.title.lowercased().contains(needle) }
             }
         }
+    }
+
+    private func currentDailyGroupTitle(id: UUID) -> String? {
+        dailyPlan.groups.first { $0.id == id }?.title
+    }
+
+    private func currentDailyTaskTitle(id: UUID) -> String? {
+        dailyPlan.groups
+            .flatMap(\.tasks)
+            .first { $0.id == id }?
+            .title
+    }
+
+    private func currentLongTermAreaTitle(id: UUID) -> String? {
+        longTermAreas.first { $0.id == id }?.title
+    }
+
+    private func currentLongTermItemTitle(id: UUID) -> String? {
+        longTermAreas
+            .flatMap(\.items)
+            .first { $0.id == id }?
+            .title
     }
 }
 
