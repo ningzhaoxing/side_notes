@@ -109,7 +109,7 @@ final class PlanViewModel: ObservableObject {
 
     func renameDailyGroup(id: UUID, title: String) -> Bool {
         guard !title.trimmed.isEmpty else { return rejectBlankInput() }
-        guard currentDailyGroupTitle(id: id) != title.trimmed else { return true }
+        guard currentDailyGroupTitle(id: id) != title.trimmed else { return acceptUnchangedInput() }
         return performAndReload {
             try store.renameDailyGroup(id: id, title: title.trimmed)
         }
@@ -136,7 +136,7 @@ final class PlanViewModel: ObservableObject {
 
     func renameDailyTask(id: UUID, title: String) -> Bool {
         guard !title.trimmed.isEmpty else { return rejectBlankInput() }
-        guard currentDailyTaskTitle(id: id) != title.trimmed else { return true }
+        guard currentDailyTaskTitle(id: id) != title.trimmed else { return acceptUnchangedInput() }
         return performAndReload {
             try store.renameDailyTask(id: id, title: title.trimmed)
         }
@@ -169,7 +169,7 @@ final class PlanViewModel: ObservableObject {
 
     func renameLongTermArea(id: UUID, title: String) -> Bool {
         guard !title.trimmed.isEmpty else { return rejectBlankInput() }
-        guard currentLongTermAreaTitle(id: id) != title.trimmed else { return true }
+        guard currentLongTermAreaTitle(id: id) != title.trimmed else { return acceptUnchangedInput() }
         return performAndReload {
             try store.renameLongTermArea(id: id, title: title.trimmed)
         }
@@ -196,7 +196,7 @@ final class PlanViewModel: ObservableObject {
 
     func renameLongTermItem(id: UUID, title: String) -> Bool {
         guard !title.trimmed.isEmpty else { return rejectBlankInput() }
-        guard currentLongTermItemTitle(id: id) != title.trimmed else { return true }
+        guard currentLongTermItemTitle(id: id) != title.trimmed else { return acceptUnchangedInput() }
         return performAndReload {
             try store.renameLongTermItem(id: id, title: title.trimmed)
         }
@@ -241,6 +241,11 @@ final class PlanViewModel: ObservableObject {
     private func rejectBlankInput() -> Bool {
         errorMessage = nil
         return false
+    }
+
+    private func acceptUnchangedInput() -> Bool {
+        errorMessage = nil
+        return true
     }
 
     @discardableResult

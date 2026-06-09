@@ -372,6 +372,28 @@ func testViewModelClearsStaleErrorsOnBlankInput() throws {
     }
 }
 
+func testViewModelClearsStaleErrorsOnUnchangedRenames() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
+    let renameFunctions = [
+        try sourceSection(source, from: "func renameDailyGroup", to: "func moveDailyGroup"),
+        try sourceSection(source, from: "func renameDailyTask", to: "func moveDailyTask"),
+        try sourceSection(source, from: "func renameLongTermArea", to: "func moveLongTermArea"),
+        try sourceSection(source, from: "func renameLongTermItem", to: "func moveLongTermItem")
+    ]
+
+    try expect(source.contains("private func acceptUnchangedInput() -> Bool"), "view model should have a shared unchanged input success path")
+    for functionSource in renameFunctions {
+        try expect(
+            functionSource.contains("return acceptUnchangedInput()"),
+            "unchanged rename should clear stale errors before returning success"
+        )
+        try expect(
+            !functionSource.contains("else { return true }"),
+            "unchanged rename should not leave old error messages visible"
+        )
+    }
+}
+
 func testPinToggleUsesSettingsAfterSaveAttempt() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
     let controls = try sourceSection(source, from: "private var controls", to: "private func toolbarButton")
@@ -876,6 +898,7 @@ let tests: [(String, () throws -> Void)] = [
     ("view model rolls back settings when save fails", testViewModelRollsBackSettingsWhenSaveFails),
     ("view model reloads after failed data operations", testViewModelReloadsAfterFailedDataOperations),
     ("view model clears stale errors on blank input", testViewModelClearsStaleErrorsOnBlankInput),
+    ("view model clears stale errors on unchanged renames", testViewModelClearsStaleErrorsOnUnchangedRenames),
     ("pin toggle uses settings after save attempt", testPinToggleUsesSettingsAfterSaveAttempt),
     ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
