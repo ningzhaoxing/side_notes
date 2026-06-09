@@ -4,8 +4,8 @@ import SideNotesCore
 
 @MainActor
 final class AppCoordinator: NSObject {
-    static let showCardNotificationName = Notification.Name("com.ningzhaoxing.sidenotes.showCard")
-    static let quitNotificationName = Notification.Name("com.ningzhaoxing.sidenotes.quit")
+    static let showCardNotificationName = AppRuntimeSignal.showCardNotificationName
+    static let quitNotificationName = AppRuntimeSignal.quitNotificationName
 
     private let viewModel: PlanViewModel
     private let cardController: PlanCardWindowController
@@ -13,6 +13,7 @@ final class AppCoordinator: NSObject {
     private var edgeTrigger: EdgeTriggerController?
     private var statusItem: NSStatusItem?
     private var pendingHideWorkItem: DispatchWorkItem?
+    private var quitRequestTimer: Timer?
     private var isApplyingEditorFrame = false
 
     init(store: PlanStore) {
@@ -52,6 +53,7 @@ final class AppCoordinator: NSObject {
     }
 
     func start() {
+        startQuitRequestMonitor()
         if ProcessInfo.processInfo.environment["SIDE_NOTES_DISABLE_STATUS_ITEM"] == "1" {
             statusItem = nil
         } else {
@@ -120,8 +122,20 @@ final class AppCoordinator: NSObject {
 
     private func quit() {
         cancelPendingHide()
+        quitRequestTimer?.invalidate()
+        quitRequestTimer = nil
         edgeTrigger?.stop()
         NSApp.terminate(nil)
+    }
+
+    private func startQuitRequestMonitor() {
+        quitRequestTimer?.invalidate()
+        quitRequestTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            guard AppRuntimeSignal.consumeQuitRequest() else { return }
+            Task { @MainActor in
+                self?.quit()
+            }
+        }
     }
 
     private func scheduleHide() {

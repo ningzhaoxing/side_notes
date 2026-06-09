@@ -3,10 +3,13 @@ import Darwin
 import SideNotesCore
 
 if ProcessInfo.processInfo.environment["SIDE_NOTES_REQUEST_QUIT_EXISTING"] == "1" {
+    AppRuntimeSignal.writeQuitRequest()
     DistributedNotificationCenter.default().post(
         name: AppCoordinator.quitNotificationName,
         object: nil
     )
+    Thread.sleep(forTimeInterval: 1.0)
+    AppRuntimeSignal.clearQuitRequest()
     exit(0)
 }
 
