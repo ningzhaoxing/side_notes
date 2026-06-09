@@ -150,6 +150,13 @@ struct EditorView: View {
                     .padding(.vertical, 6)
                 }
             }
+
+            HStack {
+                Spacer()
+                if let error = viewModel.errorMessage {
+                    Text(error).foregroundStyle(.red)
+                }
+            }
         }
     }
 
@@ -185,6 +192,10 @@ struct EditorView: View {
                         ),
                         in: 4...48
                     )
+                }
+
+                if let error = viewModel.errorMessage {
+                    Text(error).foregroundStyle(.red)
                 }
             }
         }

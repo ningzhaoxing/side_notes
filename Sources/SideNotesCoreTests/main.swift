@@ -289,6 +289,15 @@ func testUserVisibleLongTermSurfacesRenderErrors() throws {
     try expect(longTermEditor.contains("errorMessage"), "long-term editor should render view model errors")
 }
 
+func testEditorArchiveAndAppearanceSurfacesRenderErrors() throws {
+    let editorSource = try readWorkspaceFile("Sources/SideNotesApp/EditorView.swift")
+    let archiveBrowser = try sourceSection(editorSource, from: "private var archiveBrowser", to: "private var appearanceEditor")
+    let appearanceEditor = try sourceSection(editorSource, from: "private var appearanceEditor", to: "private struct DailyGroupEditor")
+
+    try expect(archiveBrowser.contains("errorMessage"), "archive browser should render view model errors")
+    try expect(appearanceEditor.contains("errorMessage"), "appearance editor should render view model errors")
+}
+
 func testViewModelReloadPreservesArchiveSearchQuery() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
     let reload = try sourceSection(source, from: "func reload()", to: "func flipCard()")
@@ -747,6 +756,7 @@ let tests: [(String, () throws -> Void)] = [
     ("card size updates clamp to readable ranges", testCardSizeUpdatesClampToReadableRanges),
     ("window frame updates preserve position and clamp size", testWindowFrameUpdatesPreservePositionAndClampSize),
     ("user visible long-term surfaces render errors", testUserVisibleLongTermSurfacesRenderErrors),
+    ("editor archive and appearance surfaces render errors", testEditorArchiveAndAppearanceSurfacesRenderErrors),
     ("view model reload preserves archive search query", testViewModelReloadPreservesArchiveSearchQuery),
     ("view model rolls back settings when save fails", testViewModelRollsBackSettingsWhenSaveFails),
     ("pin toggle uses settings after save attempt", testPinToggleUsesSettingsAfterSaveAttempt),
