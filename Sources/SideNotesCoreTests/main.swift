@@ -339,6 +339,27 @@ func testPlanCardWindowShowAndBookmarkAreIdempotent() throws {
     try expect(showBookmark.contains("window.orderFrontRegardless()"), "bookmark show should still bring the existing handle forward")
 }
 
+func testRenameInputsRevertAfterFailedSave() throws {
+    let viewModelSource = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
+    let cardSource = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
+    let editorSource = try readWorkspaceFile("Sources/SideNotesApp/EditorView.swift")
+
+    try expect(viewModelSource.contains("func renameDailyGroup(id: UUID, title: String) -> Bool"), "daily group rename should report success")
+    try expect(viewModelSource.contains("func renameDailyTask(id: UUID, title: String) -> Bool"), "daily task rename should report success")
+    try expect(viewModelSource.contains("func renameLongTermArea(id: UUID, title: String) -> Bool"), "long-term area rename should report success")
+    try expect(viewModelSource.contains("func renameLongTermItem(id: UUID, title: String) -> Bool"), "long-term item rename should report success")
+
+    try expect(cardSource.contains("if !viewModel.renameDailyGroup(id: group.id, title: title) {\n            title = group.title\n        }"), "card daily group title should revert after failed rename")
+    try expect(cardSource.contains("if !viewModel.renameDailyTask(id: task.id, title: title) {\n            title = task.title\n        }"), "card daily task title should revert after failed rename")
+    try expect(cardSource.contains("if !viewModel.renameLongTermArea(id: area.id, title: title) {\n            title = area.title\n        }"), "card long-term area title should revert after failed rename")
+    try expect(cardSource.contains("if !viewModel.renameLongTermItem(id: item.id, title: title) {\n            title = item.title\n        }"), "card long-term item title should revert after failed rename")
+
+    try expect(editorSource.contains("if !viewModel.renameDailyGroup(id: group.id, title: groupTitle) {\n            groupTitle = group.title\n        }"), "editor daily group title should revert after failed rename")
+    try expect(editorSource.contains("if !viewModel.renameDailyTask(id: task.id, title: title) {\n            title = task.title\n        }"), "editor daily task title should revert after failed rename")
+    try expect(editorSource.contains("if !viewModel.renameLongTermArea(id: area.id, title: areaTitle) {\n            areaTitle = area.title\n        }"), "editor long-term area title should revert after failed rename")
+    try expect(editorSource.contains("if !viewModel.renameLongTermItem(id: item.id, title: title) {\n            title = item.title\n        }"), "editor long-term item title should revert after failed rename")
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -619,6 +640,7 @@ let tests: [(String, () throws -> Void)] = [
     ("pin toggle uses settings after save attempt", testPinToggleUsesSettingsAfterSaveAttempt),
     ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
+    ("rename inputs revert after failed save", testRenameInputsRevertAfterFailedSave),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),

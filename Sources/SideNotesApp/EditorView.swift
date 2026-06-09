@@ -215,12 +215,12 @@ private struct DailyGroupEditor: View {
             HStack {
                 TextField("分组名称", text: $groupTitle)
                     .textFieldStyle(.roundedBorder)
-                    .onSubmit { viewModel.renameDailyGroup(id: group.id, title: groupTitle) }
+                    .onSubmit(saveGroupTitle)
                     .onAppear { groupTitle = group.title }
                     .onChange(of: group.title) { _, newValue in groupTitle = newValue }
 
                 Button("保存") {
-                    viewModel.renameDailyGroup(id: group.id, title: groupTitle)
+                    saveGroupTitle()
                 }
                 Button("上移") {
                     viewModel.moveDailyGroup(id: group.id, toSortOrder: max(0, index - 1))
@@ -234,6 +234,12 @@ private struct DailyGroupEditor: View {
                     viewModel.deleteDailyGroup(id: group.id)
                 }
             }
+        }
+    }
+
+    private func saveGroupTitle() {
+        if !viewModel.renameDailyGroup(id: group.id, title: groupTitle) {
+            groupTitle = group.title
         }
     }
 }
@@ -257,12 +263,12 @@ private struct DailyTaskEditor: View {
             TextField("任务", text: $title)
                 .textFieldStyle(.roundedBorder)
                 .strikethrough(task.isCompleted)
-                .onSubmit { viewModel.renameDailyTask(id: task.id, title: title) }
+                .onSubmit(saveTaskTitle)
                 .onAppear { title = task.title }
                 .onChange(of: task.title) { _, newValue in title = newValue }
 
             Button("保存") {
-                viewModel.renameDailyTask(id: task.id, title: title)
+                saveTaskTitle()
             }
             Button("上移") {
                 viewModel.moveDailyTask(id: task.id, toSortOrder: max(0, index - 1))
@@ -275,6 +281,12 @@ private struct DailyTaskEditor: View {
             Button("删除", role: .destructive) {
                 viewModel.deleteDailyTask(id: task.id)
             }
+        }
+    }
+
+    private func saveTaskTitle() {
+        if !viewModel.renameDailyTask(id: task.id, title: title) {
+            title = task.title
         }
     }
 }
@@ -312,12 +324,12 @@ private struct LongTermAreaEditor: View {
             HStack {
                 TextField("领域名称", text: $areaTitle)
                     .textFieldStyle(.roundedBorder)
-                    .onSubmit { viewModel.renameLongTermArea(id: area.id, title: areaTitle) }
+                    .onSubmit(saveAreaTitle)
                     .onAppear { areaTitle = area.title }
                     .onChange(of: area.title) { _, newValue in areaTitle = newValue }
 
                 Button("保存") {
-                    viewModel.renameLongTermArea(id: area.id, title: areaTitle)
+                    saveAreaTitle()
                 }
                 Button("上移") {
                     viewModel.moveLongTermArea(id: area.id, toSortOrder: max(0, index - 1))
@@ -333,6 +345,12 @@ private struct LongTermAreaEditor: View {
             }
         }
     }
+
+    private func saveAreaTitle() {
+        if !viewModel.renameLongTermArea(id: area.id, title: areaTitle) {
+            areaTitle = area.title
+        }
+    }
 }
 
 private struct LongTermItemEditor: View {
@@ -346,12 +364,12 @@ private struct LongTermItemEditor: View {
         HStack {
             TextField("长期事项", text: $title)
                 .textFieldStyle(.roundedBorder)
-                .onSubmit { viewModel.renameLongTermItem(id: item.id, title: title) }
+                .onSubmit(saveItemTitle)
                 .onAppear { title = item.title }
                 .onChange(of: item.title) { _, newValue in title = newValue }
 
             Button("保存") {
-                viewModel.renameLongTermItem(id: item.id, title: title)
+                saveItemTitle()
             }
             Button("上移") {
                 viewModel.moveLongTermItem(id: item.id, toSortOrder: max(0, index - 1))
@@ -364,6 +382,12 @@ private struct LongTermItemEditor: View {
             Button("删除", role: .destructive) {
                 viewModel.deleteLongTermItem(id: item.id)
             }
+        }
+    }
+
+    private func saveItemTitle() {
+        if !viewModel.renameLongTermItem(id: item.id, title: title) {
+            title = item.title
         }
     }
 }

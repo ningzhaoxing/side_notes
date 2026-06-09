@@ -290,7 +290,9 @@ private struct InlineDailyGroupView: View {
     }
 
     private func saveTitle() {
-        viewModel.renameDailyGroup(id: group.id, title: title)
+        if !viewModel.renameDailyGroup(id: group.id, title: title) {
+            title = group.title
+        }
     }
 }
 
@@ -336,7 +338,9 @@ private struct InlineDailyTaskView: View {
     }
 
     private func saveTitle() {
-        viewModel.renameDailyTask(id: task.id, title: title)
+        if !viewModel.renameDailyTask(id: task.id, title: title) {
+            title = task.title
+        }
     }
 }
 
@@ -391,7 +395,9 @@ private struct InlineLongTermAreaView: View {
     }
 
     private func saveTitle() {
-        viewModel.renameLongTermArea(id: area.id, title: title)
+        if !viewModel.renameLongTermArea(id: area.id, title: title) {
+            title = area.title
+        }
     }
 }
 
@@ -430,6 +436,8 @@ private struct InlineLongTermItemView: View {
     }
 
     private func saveTitle() {
-        viewModel.renameLongTermItem(id: item.id, title: title)
+        if !viewModel.renameLongTermItem(id: item.id, title: title) {
+            title = item.title
+        }
     }
 }

@@ -102,9 +102,9 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
-    func renameDailyGroup(id: UUID, title: String) {
-        guard !title.trimmed.isEmpty else { return }
-        performAndReload {
+    func renameDailyGroup(id: UUID, title: String) -> Bool {
+        guard !title.trimmed.isEmpty else { return false }
+        return performAndReload {
             try store.renameDailyGroup(id: id, title: title.trimmed)
         }
     }
@@ -128,9 +128,9 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
-    func renameDailyTask(id: UUID, title: String) {
-        guard !title.trimmed.isEmpty else { return }
-        performAndReload {
+    func renameDailyTask(id: UUID, title: String) -> Bool {
+        guard !title.trimmed.isEmpty else { return false }
+        return performAndReload {
             try store.renameDailyTask(id: id, title: title.trimmed)
         }
     }
@@ -160,9 +160,9 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
-    func renameLongTermArea(id: UUID, title: String) {
-        guard !title.trimmed.isEmpty else { return }
-        performAndReload {
+    func renameLongTermArea(id: UUID, title: String) -> Bool {
+        guard !title.trimmed.isEmpty else { return false }
+        return performAndReload {
             try store.renameLongTermArea(id: id, title: title.trimmed)
         }
     }
@@ -186,9 +186,9 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
-    func renameLongTermItem(id: UUID, title: String) {
-        guard !title.trimmed.isEmpty else { return }
-        performAndReload {
+    func renameLongTermItem(id: UUID, title: String) -> Bool {
+        guard !title.trimmed.isEmpty else { return false }
+        return performAndReload {
             try store.renameLongTermItem(id: id, title: title.trimmed)
         }
     }
