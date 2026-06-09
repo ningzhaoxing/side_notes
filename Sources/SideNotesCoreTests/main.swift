@@ -131,6 +131,21 @@ func testWindowFrameOutsideScreensFallsBackToDefault() throws {
     try expectEqual(settings.editorFrame.height, 680, accuracy: 0.001, "fallback editor height")
 }
 
+func testBarelyVisibleWindowFramesFallBackToUsablePositions() throws {
+    var settings = AppSettings.defaults()
+    settings.cardFrame = StoredRect(x: 1_439, y: 899, width: 320, height: 580)
+    settings.editorFrame = StoredRect(x: 1_439, y: 899, width: 920, height: 680)
+
+    settings.validate(visibleFrames: [
+        StoredRect(x: 0, y: 0, width: 1_440, height: 900)
+    ])
+
+    try expectEqual(settings.cardFrame.x, 1_088, accuracy: 0.001, "barely visible card fallback x")
+    try expectEqual(settings.cardFrame.y, 160, accuracy: 0.001, "barely visible card fallback y")
+    try expectEqual(settings.editorFrame.x, 220, accuracy: 0.001, "barely visible editor fallback x")
+    try expectEqual(settings.editorFrame.y, 140, accuracy: 0.001, "barely visible editor fallback y")
+}
+
 func testCardSizeUpdatesClampToReadableRanges() throws {
     var settings = AppSettings.defaults()
 
@@ -783,6 +798,7 @@ let tests: [(String, () throws -> Void)] = [
     ("settings decode invalid values uses defaults and validation", testSettingsDecodeInvalidValuesUsesDefaultsAndValidation),
     ("appearance settings clamp to readable ranges", testAppearanceSettingsClampToReadableRanges),
     ("window frame outside screens falls back to default", testWindowFrameOutsideScreensFallsBackToDefault),
+    ("barely visible window frames fall back to usable positions", testBarelyVisibleWindowFramesFallBackToUsablePositions),
     ("card size updates clamp to readable ranges", testCardSizeUpdatesClampToReadableRanges),
     ("window frame updates preserve position and clamp size", testWindowFrameUpdatesPreservePositionAndClampSize),
     ("user visible long-term surfaces render errors", testUserVisibleLongTermSurfacesRenderErrors),

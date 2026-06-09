@@ -29,6 +29,13 @@ public struct StoredRect: Codable, Equatable, Sendable {
     public func intersects(_ other: StoredRect) -> Bool {
         maxX > other.x && other.maxX > x && maxY > other.y && other.maxY > y
     }
+
+    public func isUsablyVisible(in other: StoredRect, minimumVisibleSize: Double = 96) -> Bool {
+        let visibleWidth = max(0, min(maxX, other.maxX) - max(x, other.x))
+        let visibleHeight = max(0, min(maxY, other.maxY) - max(y, other.y))
+        return visibleWidth >= min(width, minimumVisibleSize)
+            && visibleHeight >= min(height, minimumVisibleSize)
+    }
 }
 
 public struct DailyTask: Codable, Equatable, Identifiable, Sendable {
@@ -241,7 +248,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
             return
         }
 
-        if !visibleFrames.contains(where: { cardFrame.intersects($0) }) {
+        if !visibleFrames.contains(where: { cardFrame.isUsablyVisible(in: $0) }) {
             let frame = visibleFrames[0]
             let defaultFrame = AppSettings.defaults().cardFrame
             cardFrame = StoredRect(
@@ -252,10 +259,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
             )
         }
 
-        if !visibleFrames.contains(where: { editorFrame.intersects($0) }) {
+        if !visibleFrames.contains(where: { editorFrame.isUsablyVisible(in: $0) }) {
             let frame = visibleFrames[0]
             let defaultFrame = AppSettings.defaults().editorFrame
-            if defaultFrame.intersects(frame) {
+            if defaultFrame.isUsablyVisible(in: frame) {
                 editorFrame = defaultFrame
             } else {
                 editorFrame = StoredRect(
