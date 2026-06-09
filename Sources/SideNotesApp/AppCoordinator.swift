@@ -17,11 +17,13 @@ final class AppCoordinator: NSObject {
     private var quitRequestTimer: Timer?
     private var isApplyingEditorFrame = false
     private var settingsCancellable: AnyCancellable?
+    private var lastAppliedSettings: AppSettings
 
     init(store: PlanStore) {
         let viewModel = PlanViewModel(store: store)
         viewModel.validateWindowFrames(visibleFrames: NSScreen.storedVisibleFrames)
         self.viewModel = viewModel
+        lastAppliedSettings = viewModel.settings
         cardController = PlanCardWindowController(viewModel: viewModel)
         super.init()
         cardController.onPinToggle = { [weak self] isPinned in
@@ -168,8 +170,10 @@ final class AppCoordinator: NSObject {
     }
 
     private func applyLiveSettings(_ settings: AppSettings) {
+        let triggerSideChanged = settings.triggerSide != lastAppliedSettings.triggerSide
+        lastAppliedSettings = settings
         edgeTrigger?.setTriggerSide(settings.triggerSide)
-        cardController.updateForSettingsChange()
+        cardController.updateForSettingsChange(repositionForTriggerSideChange: triggerSideChanged)
     }
 
     private func makeEditorWindow() -> NSWindow {

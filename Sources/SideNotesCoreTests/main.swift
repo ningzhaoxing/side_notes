@@ -373,9 +373,23 @@ func testTriggerSideSettingIsEditableAndAppliedLive() throws {
     try expect(appearanceEditor.contains("viewModel.setTriggerSide($0)"), "trigger side picker should save through view model")
     try expect(coordinatorSource.contains("settingsCancellable"), "coordinator should observe live settings changes")
     try expect(coordinatorSource.contains("edgeTrigger?.setTriggerSide(settings.triggerSide)"), "coordinator should update edge trigger side live")
-    try expect(coordinatorSource.contains("cardController.updateForSettingsChange()"), "coordinator should let visible card or handle react to live setting changes")
+    try expect(coordinatorSource.contains("cardController.updateForSettingsChange"), "coordinator should let visible card or handle react to live setting changes")
     try expect(edgeTriggerSource.contains("func setTriggerSide(_ triggerSide: TriggerSide)"), "edge trigger should allow live side updates")
-    try expect(cardControllerSource.contains("func updateForSettingsChange()"), "card controller should reposition collapsed handle after settings changes")
+    try expect(cardControllerSource.contains("func updateForSettingsChange"), "card controller should reposition collapsed handle after settings changes")
+}
+
+func testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges() throws {
+    let coordinatorSource = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
+    let cardControllerSource = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let applyLiveSettings = try sourceSection(coordinatorSource, from: "private func applyLiveSettings", to: "private func makeEditorWindow")
+    let updateForSettingsChange = try sourceSection(cardControllerSource, from: "func updateForSettingsChange", to: "func showBookmark()")
+
+    try expect(coordinatorSource.contains("lastAppliedSettings"), "coordinator should remember previous settings before live updates")
+    try expect(applyLiveSettings.contains("settings.triggerSide != lastAppliedSettings.triggerSide"), "coordinator should detect real trigger side changes")
+    try expect(applyLiveSettings.contains("repositionForTriggerSideChange: triggerSideChanged"), "coordinator should only request card reposition for trigger side changes")
+    try expect(updateForSettingsChange.contains("repositionForTriggerSideChange: Bool"), "card controller should receive an explicit reposition reason")
+    try expect(updateForSettingsChange.contains("window.isVisible, !viewModel.settings.isPinned"), "card controller should only move an expanded edge card, not a pinned card")
+    try expect(updateForSettingsChange.contains("applyFrame(edgeFrame(), animate: false)"), "expanded unpinned card should move to the newly selected edge")
 }
 
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
@@ -662,6 +676,7 @@ let tests: [(String, () throws -> Void)] = [
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
     ("rename inputs revert after failed save", testRenameInputsRevertAfterFailedSave),
     ("trigger side setting is editable and applied live", testTriggerSideSettingIsEditableAndAppliedLive),
+    ("expanded unpinned card repositions only when trigger side changes", testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),

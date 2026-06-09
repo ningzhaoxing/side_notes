@@ -80,10 +80,12 @@ final class PlanCardWindowController: NSObject {
         applyFrame(resizedFrame(), animate: false)
     }
 
-    func updateForSettingsChange() {
+    func updateForSettingsChange(repositionForTriggerSideChange: Bool = false) {
         window.level = viewModel.settings.isPinned ? .floating : .normal
         if isCollapsed {
             applyFrame(bookmarkFrame(), animate: false)
+        } else if repositionForTriggerSideChange, window.isVisible, !viewModel.settings.isPinned {
+            applyFrame(edgeFrame(), animate: false)
         }
     }
 
