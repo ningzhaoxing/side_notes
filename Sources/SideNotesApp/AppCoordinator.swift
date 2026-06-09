@@ -115,8 +115,11 @@ final class AppCoordinator: NSObject {
         guard pendingHideWorkItem == nil else { return }
         let workItem = DispatchWorkItem { [weak self] in
             Task { @MainActor in
-                self?.pendingHideWorkItem = nil
-                self?.cardController.hide()
+                guard let self else { return }
+                self.pendingHideWorkItem = nil
+                if self.cardController.shouldAutoHide(mouseLocation: NSEvent.mouseLocation) {
+                    self.cardController.hide()
+                }
             }
         }
         pendingHideWorkItem = workItem

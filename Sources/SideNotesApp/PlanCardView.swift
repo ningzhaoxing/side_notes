@@ -55,37 +55,61 @@ struct PlanCardView: View {
     }
 
     private var controls: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 6) {
             Text(viewModel.settings.visibleSide == .front ? "今天" : "长期")
                 .font(.headline)
-            Spacer()
-            Button(viewModel.settings.isPinned ? "取消固定" : "固定") {
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            toolbarButton(
+                systemName: viewModel.settings.isPinned ? "pin.slash" : "pin",
+                label: viewModel.settings.isPinned ? "取消固定" : "固定"
+            ) {
                 let next = !viewModel.settings.isPinned
                 viewModel.setPinned(next)
                 onPinToggle(next)
             }
-            Button("翻面") {
+            toolbarButton(systemName: "arrow.triangle.2.circlepath", label: "翻面") {
                 viewModel.flipCard()
             }
-            Button("编辑") {
+            toolbarButton(systemName: "pencil", label: "编辑") {
                 onEdit()
             }
-            Button("设置") {
+            toolbarButton(systemName: "gearshape", label: "设置") {
                 onSettings()
             }
-            Button("退出") {
+            toolbarButton(systemName: "power", label: "退出") {
                 onQuit()
             }
-            Button("归档") {
+            toolbarButton(
+                systemName: "archivebox",
+                label: "归档",
+                isDisabled: viewModel.dailyPlan.groups.isEmpty
+            ) {
                 isArchiveConfirmationPresented = true
             }
-            .disabled(viewModel.dailyPlan.groups.isEmpty)
         }
         .buttonStyle(.borderless)
         .font(.system(size: 12, weight: .medium))
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color.primary.opacity(0.055))
+    }
+
+    private func toolbarButton(
+        systemName: String,
+        label: String,
+        isDisabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: 24, height: 24)
+        }
+        .buttonStyle(.borderless)
+        .disabled(isDisabled)
+        .help(label)
+        .accessibilityLabel(label)
     }
 
     private var resizeHandle: some View {

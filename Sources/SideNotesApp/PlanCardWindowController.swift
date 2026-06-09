@@ -61,6 +61,9 @@ final class PlanCardWindowController: NSObject {
         guard window.isVisible, !viewModel.settings.isPinned, !isCollapsed else {
             return false
         }
+        guard !isTextEditing else {
+            return false
+        }
         return !window.frame.insetBy(dx: -80, dy: -80).contains(mouseLocation)
     }
 
@@ -162,6 +165,10 @@ final class PlanCardWindowController: NSObject {
         }
         let y = frame.minY + max(24, (frame.height - height) / 2)
         return NSRect(x: x, y: y, width: width, height: height)
+    }
+
+    private var isTextEditing: Bool {
+        window.firstResponder is NSTextView
     }
 }
 
