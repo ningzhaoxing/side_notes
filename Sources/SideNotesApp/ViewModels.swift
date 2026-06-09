@@ -245,7 +245,9 @@ final class PlanViewModel: ObservableObject {
             reload()
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            let message = error.localizedDescription
+            reload()
+            errorMessage = message
             return false
         }
     }

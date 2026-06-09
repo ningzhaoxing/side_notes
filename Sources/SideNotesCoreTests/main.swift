@@ -318,6 +318,15 @@ func testViewModelRollsBackSettingsWhenSaveFails() throws {
     try expect(saveSettings.contains("settings = persistedSettings"), "failed save should roll back optimistic settings")
 }
 
+func testViewModelReloadsAfterFailedDataOperations() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
+    let performAndReload = try sourceSection(source, from: "private func performAndReload", to: "private func filteredArchives")
+
+    try expect(performAndReload.contains("let message = error.localizedDescription"), "failed data operations should preserve their original error message")
+    try expect(performAndReload.contains("reload()"), "failed data operations should reload to remove stale UI rows")
+    try expect(performAndReload.contains("errorMessage = message"), "failed data operations should restore the original error after reloading")
+}
+
 func testPinToggleUsesSettingsAfterSaveAttempt() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
     let controls = try sourceSection(source, from: "private var controls", to: "private func toolbarButton")
@@ -780,6 +789,7 @@ let tests: [(String, () throws -> Void)] = [
     ("editor archive and appearance surfaces render errors", testEditorArchiveAndAppearanceSurfacesRenderErrors),
     ("view model reload preserves archive search query", testViewModelReloadPreservesArchiveSearchQuery),
     ("view model rolls back settings when save fails", testViewModelRollsBackSettingsWhenSaveFails),
+    ("view model reloads after failed data operations", testViewModelReloadsAfterFailedDataOperations),
     ("pin toggle uses settings after save attempt", testPinToggleUsesSettingsAfterSaveAttempt),
     ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
