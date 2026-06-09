@@ -171,6 +171,17 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var cardCornerRadius: Double
     public var lastArchiveDate: Date?
 
+    private enum CodingKeys: String, CodingKey {
+        case triggerSide
+        case isPinned
+        case cardFrame
+        case editorFrame
+        case visibleSide
+        case cardOpacity
+        case cardCornerRadius
+        case lastArchiveDate
+    }
+
     public init(
         triggerSide: TriggerSide,
         isPinned: Bool,
@@ -189,6 +200,20 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.cardOpacity = cardOpacity
         self.cardCornerRadius = cardCornerRadius
         self.lastArchiveDate = lastArchiveDate
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = AppSettings.defaults()
+
+        triggerSide = (try? values.decodeIfPresent(TriggerSide.self, forKey: .triggerSide)) ?? defaults.triggerSide
+        isPinned = (try? values.decodeIfPresent(Bool.self, forKey: .isPinned)) ?? defaults.isPinned
+        cardFrame = (try? values.decodeIfPresent(StoredRect.self, forKey: .cardFrame)) ?? defaults.cardFrame
+        editorFrame = (try? values.decodeIfPresent(StoredRect.self, forKey: .editorFrame)) ?? defaults.editorFrame
+        visibleSide = (try? values.decodeIfPresent(VisibleSide.self, forKey: .visibleSide)) ?? defaults.visibleSide
+        cardOpacity = (try? values.decodeIfPresent(Double.self, forKey: .cardOpacity)) ?? defaults.cardOpacity
+        cardCornerRadius = (try? values.decodeIfPresent(Double.self, forKey: .cardCornerRadius)) ?? defaults.cardCornerRadius
+        lastArchiveDate = try? values.decodeIfPresent(Date.self, forKey: .lastArchiveDate)
     }
 
     public static func defaults() -> AppSettings {

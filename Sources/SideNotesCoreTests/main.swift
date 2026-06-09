@@ -33,6 +33,56 @@ func testDefaultSettingsAreReadableAndUsable() throws {
     try expectEqual(settings.cardCornerRadius, 22, accuracy: 0.001, "default corner radius")
 }
 
+func testSettingsDecodeMissingKeysUsesReadableDefaults() throws {
+    let json = """
+    {
+      "triggerSide": "left",
+      "isPinned": false,
+      "visibleSide": "back",
+      "cardFrame": { "x": 80, "y": 90, "width": 410, "height": 620 }
+    }
+    """
+    let decoder = JSONDecoder()
+
+    var settings = try decoder.decode(AppSettings.self, from: Data(json.utf8))
+    settings.validate()
+
+    try expectEqual(settings.triggerSide, .left, "decoded trigger side")
+    try expect(!settings.isPinned, "decoded pinned state")
+    try expectEqual(settings.visibleSide, .back, "decoded visible side")
+    try expectEqual(settings.cardFrame, StoredRect(x: 80, y: 90, width: 410, height: 620), "decoded card frame")
+    try expectEqual(settings.editorFrame, AppSettings.defaults().editorFrame, "missing editor frame default")
+    try expectEqual(settings.cardOpacity, AppSettings.defaults().cardOpacity, accuracy: 0.001, "missing opacity default")
+    try expectEqual(settings.cardCornerRadius, AppSettings.defaults().cardCornerRadius, accuracy: 0.001, "missing corner default")
+}
+
+func testSettingsDecodeInvalidValuesUsesDefaultsAndValidation() throws {
+    let json = """
+    {
+      "triggerSide": "top",
+      "isPinned": true,
+      "visibleSide": "inside",
+      "cardOpacity": 12,
+      "cardCornerRadius": -4,
+      "cardFrame": { "x": 20, "y": 30, "width": 100, "height": 200 },
+      "editorFrame": { "x": 40, "y": 50, "width": 200, "height": 300 }
+    }
+    """
+    let decoder = JSONDecoder()
+
+    var settings = try decoder.decode(AppSettings.self, from: Data(json.utf8))
+    settings.validate()
+
+    try expectEqual(settings.triggerSide, AppSettings.defaults().triggerSide, "invalid trigger side default")
+    try expectEqual(settings.visibleSide, AppSettings.defaults().visibleSide, "invalid visible side default")
+    try expectEqual(settings.cardOpacity, 1, accuracy: 0.001, "invalid opacity clamped")
+    try expectEqual(settings.cardCornerRadius, 4, accuracy: 0.001, "invalid corner clamped")
+    try expectEqual(settings.cardFrame.width, 260, accuracy: 0.001, "invalid card width clamped")
+    try expectEqual(settings.cardFrame.height, 360, accuracy: 0.001, "invalid card height clamped")
+    try expectEqual(settings.editorFrame.width, 640, accuracy: 0.001, "invalid editor width clamped")
+    try expectEqual(settings.editorFrame.height, 480, accuracy: 0.001, "invalid editor height clamped")
+}
+
 func testAppearanceSettingsClampToReadableRanges() throws {
     var settings = AppSettings.defaults()
     settings.cardOpacity = 0.1
@@ -272,6 +322,25 @@ func testPlanStoreEditsDeletesAndReordersDailyPlan() throws {
     try expectEqual(planAfterDelete.groups.map { $0.title }, ["Deep Work"], "daily group delete")
 }
 
+func testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+
+    _ = try store.addDailyGroup(title: "Work")
+    _ = try store.addDailyGroup(title: "Learning")
+
+    do {
+        try store.moveDailyGroup(id: UUID(), toSortOrder: 0)
+        throw TestFailure(description: "missing daily group reorder should fail")
+    } catch {
+        // Expected: stale UI events should not rewrite existing sort orders.
+    }
+
+    let plan = try store.loadDailyPlan()
+    try expectEqual(plan.groups.map { $0.title }, ["Work", "Learning"], "daily group order unchanged after missing reorder")
+    try expectEqual(plan.groups.map { $0.sortOrder }, [0, 1], "daily group sort orders unchanged after missing reorder")
+}
+
 func testPlanStoreEditsDeletesAndReordersLongTermAreas() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -296,8 +365,29 @@ func testPlanStoreEditsDeletesAndReordersLongTermAreas() throws {
     try expectEqual(areasAfterDelete.map { $0.title }, ["Books"], "long-term area delete")
 }
 
+func testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+
+    _ = try store.addLongTermArea(title: "Reading")
+    _ = try store.addLongTermArea(title: "English")
+
+    do {
+        try store.moveLongTermArea(id: UUID(), toSortOrder: 0)
+        throw TestFailure(description: "missing long-term area reorder should fail")
+    } catch {
+        // Expected: stale UI events should not rewrite existing sort orders.
+    }
+
+    let areas = try store.loadLongTermAreas()
+    try expectEqual(areas.map { $0.title }, ["Reading", "English"], "long-term area order unchanged after missing reorder")
+    try expectEqual(areas.map { $0.sortOrder }, [0, 1], "long-term area sort orders unchanged after missing reorder")
+}
+
 let tests: [(String, () throws -> Void)] = [
     ("default settings are readable and usable", testDefaultSettingsAreReadableAndUsable),
+    ("settings decode missing keys uses readable defaults", testSettingsDecodeMissingKeysUsesReadableDefaults),
+    ("settings decode invalid values uses defaults and validation", testSettingsDecodeInvalidValuesUsesDefaultsAndValidation),
     ("appearance settings clamp to readable ranges", testAppearanceSettingsClampToReadableRanges),
     ("window frame outside screens falls back to default", testWindowFrameOutsideScreensFallsBackToDefault),
     ("card size updates clamp to readable ranges", testCardSizeUpdatesClampToReadableRanges),
@@ -309,7 +399,9 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store persists long-term areas and items", testPlanStorePersistsLongTermAreasAndItems),
     ("plan store archives current plan and searches history", testPlanStoreArchivesCurrentPlanAndSearchesHistory),
     ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
-    ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas)
+    ("plan store rejects reorder of missing daily group without changing order", testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder),
+    ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas),
+    ("plan store rejects reorder of missing long-term area without changing order", testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder)
 ]
 
 var failures: [String] = []

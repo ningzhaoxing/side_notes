@@ -257,7 +257,9 @@ public final class PlanStore {
     }
 
     public func moveLongTermArea(id: UUID, toSortOrder sortOrder: Int) throws {
-        try reorder(table: "long_term_areas", id: id, toSortOrder: sortOrder)
+        try database.transaction {
+            try reorder(table: "long_term_areas", id: id, toSortOrder: sortOrder)
+        }
     }
 
     public func deleteLongTermArea(id: UUID) throws {
@@ -300,16 +302,18 @@ public final class PlanStore {
     }
 
     public func moveLongTermItem(id: UUID, toSortOrder sortOrder: Int) throws {
-        let areaRows = try database.query(
-            "SELECT area_id FROM long_term_items WHERE id = ?",
-            [.text(id.uuidString)]
-        ) { statement in
-            try sqliteText(statement, 0)
+        try database.transaction {
+            let areaRows = try database.query(
+                "SELECT area_id FROM long_term_items WHERE id = ?",
+                [.text(id.uuidString)]
+            ) { statement in
+                try sqliteText(statement, 0)
+            }
+            guard let areaID = areaRows.first else {
+                throw SQLiteStoreError.missingValue("long-term item area")
+            }
+            try reorder(table: "long_term_items", id: id, toSortOrder: sortOrder, ownerColumn: "area_id", ownerValue: areaID)
         }
-        guard let areaID = areaRows.first else {
-            throw SQLiteStoreError.missingValue("long-term item area")
-        }
-        try reorder(table: "long_term_items", id: id, toSortOrder: sortOrder, ownerColumn: "area_id", ownerValue: areaID)
     }
 
     public func deleteLongTermItem(id: UUID) throws {
@@ -645,6 +649,10 @@ public final class PlanStore {
         }
 
         let idString = id.uuidString
+        guard rows.contains(idString) else {
+            throw SQLiteStoreError.missingValue("\(table) row \(idString)")
+        }
+
         var ordered = rows.filter { $0 != idString }
         let insertionIndex = max(0, min(targetSortOrder, ordered.count))
         ordered.insert(idString, at: insertionIndex)

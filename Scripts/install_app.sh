@@ -17,6 +17,12 @@ if [[ "${SIDENOTES_SKIP_QUIT_RUNNING:-0}" != "1" ]]; then
   sleep 0.5
   killall -9 SideNotes >/dev/null 2>&1 || true
   sleep 0.5
+
+  LOCK_FILE="$HOME/Library/Application Support/SideNotes/SideNotes.lock"
+  if command -v lsof >/dev/null 2>&1 && lsof "$LOCK_FILE" >/dev/null 2>&1; then
+    echo "SideNotes is still running. Use the card's 退出 button or the side handle menu to quit, then run this installer again." >&2
+    exit 1
+  fi
 fi
 
 mkdir -p "$INSTALL_DIR"
