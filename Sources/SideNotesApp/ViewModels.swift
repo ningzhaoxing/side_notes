@@ -95,9 +95,9 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
-    func addDailyGroup(title: String) {
-        guard !title.trimmed.isEmpty else { return }
-        performAndReload {
+    func addDailyGroup(title: String) -> Bool {
+        guard !title.trimmed.isEmpty else { return false }
+        return performAndReload {
             _ = try store.addDailyGroup(title: title.trimmed)
         }
     }
@@ -121,9 +121,9 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
-    func addDailyTask(groupID: UUID, title: String) {
-        guard !title.trimmed.isEmpty else { return }
-        performAndReload {
+    func addDailyTask(groupID: UUID, title: String) -> Bool {
+        guard !title.trimmed.isEmpty else { return false }
+        return performAndReload {
             _ = try store.addDailyTask(groupID: groupID, title: title.trimmed)
         }
     }
@@ -153,9 +153,9 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
-    func addLongTermArea(title: String) {
-        guard !title.trimmed.isEmpty else { return }
-        performAndReload {
+    func addLongTermArea(title: String) -> Bool {
+        guard !title.trimmed.isEmpty else { return false }
+        return performAndReload {
             _ = try store.addLongTermArea(title: title.trimmed)
         }
     }
@@ -179,9 +179,9 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
-    func addLongTermItem(areaID: UUID, title: String) {
-        guard !title.trimmed.isEmpty else { return }
-        performAndReload {
+    func addLongTermItem(areaID: UUID, title: String) -> Bool {
+        guard !title.trimmed.isEmpty else { return false }
+        return performAndReload {
             _ = try store.addLongTermItem(areaID: areaID, title: title.trimmed)
         }
     }
@@ -229,12 +229,15 @@ final class PlanViewModel: ObservableObject {
         }
     }
 
-    private func performAndReload(_ operation: () throws -> Void) {
+    @discardableResult
+    private func performAndReload(_ operation: () throws -> Void) -> Bool {
         do {
             try operation()
             reload()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 

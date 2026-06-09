@@ -45,8 +45,9 @@ struct EditorView: View {
                 TextField("新分组，例如 工作 / 早上 / 英语", text: $newGroupTitle)
                     .textFieldStyle(.roundedBorder)
                 Button("添加分组") {
-                    viewModel.addDailyGroup(title: newGroupTitle)
-                    newGroupTitle = ""
+                    if viewModel.addDailyGroup(title: newGroupTitle) {
+                        newGroupTitle = ""
+                    }
                 }
             }
 
@@ -85,8 +86,9 @@ struct EditorView: View {
                 TextField("新长期领域，例如 读书 / 英语 / 社交", text: $newAreaTitle)
                     .textFieldStyle(.roundedBorder)
                 Button("添加领域") {
-                    viewModel.addLongTermArea(title: newAreaTitle)
-                    newAreaTitle = ""
+                    if viewModel.addLongTermArea(title: newAreaTitle) {
+                        newAreaTitle = ""
+                    }
                 }
             }
 
@@ -204,8 +206,9 @@ private struct DailyGroupEditor: View {
                 TextField("新任务", text: $newTaskTitle)
                     .textFieldStyle(.roundedBorder)
                 Button("添加任务") {
-                    viewModel.addDailyTask(groupID: group.id, title: newTaskTitle)
-                    newTaskTitle = ""
+                    if viewModel.addDailyTask(groupID: group.id, title: newTaskTitle) {
+                        newTaskTitle = ""
+                    }
                 }
             }
         } header: {
@@ -300,8 +303,9 @@ private struct LongTermAreaEditor: View {
                 TextField("新长期事项", text: $newItemTitle)
                     .textFieldStyle(.roundedBorder)
                 Button("添加事项") {
-                    viewModel.addLongTermItem(areaID: area.id, title: newItemTitle)
-                    newItemTitle = ""
+                    if viewModel.addLongTermItem(areaID: area.id, title: newItemTitle) {
+                        newItemTitle = ""
+                    }
                 }
             }
         } header: {

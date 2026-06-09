@@ -308,6 +308,26 @@ func testPinToggleUsesSettingsAfterSaveAttempt() throws {
     try expect(!controls.contains("onPinToggle(next)"), "pin window state should not use optimistic next value after possible rollback")
 }
 
+func testAddInputsClearOnlyAfterSuccessfulSave() throws {
+    let viewModelSource = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
+    let cardSource = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
+    let editorSource = try readWorkspaceFile("Sources/SideNotesApp/EditorView.swift")
+
+    try expect(viewModelSource.contains("func addDailyGroup(title: String) -> Bool"), "daily group add should report success")
+    try expect(viewModelSource.contains("func addDailyTask(groupID: UUID, title: String) -> Bool"), "daily task add should report success")
+    try expect(viewModelSource.contains("func addLongTermArea(title: String) -> Bool"), "long-term area add should report success")
+    try expect(viewModelSource.contains("func addLongTermItem(areaID: UUID, title: String) -> Bool"), "long-term item add should report success")
+
+    try expect(cardSource.contains("if viewModel.addDailyGroup(title: newGroupTitle)"), "card daily group input should clear only after successful add")
+    try expect(cardSource.contains("if viewModel.addDailyTask(groupID: group.id, title: newTaskTitle)"), "card daily task input should clear only after successful add")
+    try expect(cardSource.contains("if viewModel.addLongTermArea(title: newAreaTitle)"), "card long-term area input should clear only after successful add")
+    try expect(cardSource.contains("if viewModel.addLongTermItem(areaID: area.id, title: newItemTitle)"), "card long-term item input should clear only after successful add")
+    try expect(editorSource.contains("if viewModel.addDailyGroup(title: newGroupTitle)"), "editor daily group input should clear only after successful add")
+    try expect(editorSource.contains("if viewModel.addDailyTask(groupID: group.id, title: newTaskTitle)"), "editor daily task input should clear only after successful add")
+    try expect(editorSource.contains("if viewModel.addLongTermArea(title: newAreaTitle)"), "editor long-term area input should clear only after successful add")
+    try expect(editorSource.contains("if viewModel.addLongTermItem(areaID: area.id, title: newItemTitle)"), "editor long-term item input should clear only after successful add")
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -586,6 +606,7 @@ let tests: [(String, () throws -> Void)] = [
     ("view model reload preserves archive search query", testViewModelReloadPreservesArchiveSearchQuery),
     ("view model rolls back settings when save fails", testViewModelRollsBackSettingsWhenSaveFails),
     ("pin toggle uses settings after save attempt", testPinToggleUsesSettingsAfterSaveAttempt),
+    ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),

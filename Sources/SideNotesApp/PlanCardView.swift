@@ -149,8 +149,9 @@ struct PlanCardView: View {
                     buttonTitle: "添加分组",
                     text: $newGroupTitle
                 ) {
-                    viewModel.addDailyGroup(title: newGroupTitle)
-                    newGroupTitle = ""
+                    if viewModel.addDailyGroup(title: newGroupTitle) {
+                        newGroupTitle = ""
+                    }
                 }
 
                 if viewModel.dailyPlan.groups.isEmpty {
@@ -179,8 +180,9 @@ struct PlanCardView: View {
                     buttonTitle: "添加领域",
                     text: $newAreaTitle
                 ) {
-                    viewModel.addLongTermArea(title: newAreaTitle)
-                    newAreaTitle = ""
+                    if viewModel.addLongTermArea(title: newAreaTitle) {
+                        newAreaTitle = ""
+                    }
                 }
 
                 if viewModel.longTermAreas.isEmpty {
@@ -278,8 +280,9 @@ private struct InlineDailyGroupView: View {
                 buttonTitle: "添加任务",
                 text: $newTaskTitle
             ) {
-                viewModel.addDailyTask(groupID: group.id, title: newTaskTitle)
-                newTaskTitle = ""
+                if viewModel.addDailyTask(groupID: group.id, title: newTaskTitle) {
+                    newTaskTitle = ""
+                }
             }
         }
         .padding(.vertical, 4)
@@ -378,8 +381,9 @@ private struct InlineLongTermAreaView: View {
                 buttonTitle: "添加事项",
                 text: $newItemTitle
             ) {
-                viewModel.addLongTermItem(areaID: area.id, title: newItemTitle)
-                newItemTitle = ""
+                if viewModel.addLongTermItem(areaID: area.id, title: newItemTitle) {
+                    newItemTitle = ""
+                }
             }
         }
         .padding(.vertical, 4)
