@@ -238,6 +238,21 @@ func executeSQLite(url: URL, sql: String) throws {
     }
 }
 
+func executeSQLiteScalar(url: URL, sql: String) throws -> String {
+    let process = Process()
+    let output = Pipe()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
+    process.arguments = [url.path, sql]
+    process.standardOutput = output
+    try process.run()
+    process.waitUntilExit()
+    if process.terminationStatus != 0 {
+        throw TestFailure(description: "sqlite3 scalar command failed with status \(process.terminationStatus)")
+    }
+    let data = output.fileHandleForReading.readDataToEndOfFile()
+    return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -359,6 +374,37 @@ func testPlanStoreSkipsCorruptDailyRowsWhileKeepingGoodData() throws {
 
     try expectEqual(plan.groups.map { $0.title }, ["Work"], "corrupt daily group rows skipped")
     try expectEqual(plan.groups[0].tasks.map { $0.title }, ["Keep this task"], "corrupt daily task rows skipped")
+}
+
+func testPlanStoreRecoversCorruptCurrentPlanID() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    _ = try PlanStore(databaseURL: url)
+    try executeSQLite(url: url, sql: "UPDATE daily_plan SET id = 'not-a-plan-uuid' WHERE singleton = 1;")
+
+    let reopened = try PlanStore(databaseURL: url)
+    let plan = try reopened.loadDailyPlan()
+    let repairedID = try executeSQLiteScalar(url: url, sql: "SELECT id FROM daily_plan WHERE singleton = 1;")
+
+    try expectEqual(plan.groups.count, 0, "daily plan still loads with corrupt plan id")
+    try expectEqual(repairedID, plan.id.uuidString, "corrupt plan id repaired in storage")
+}
+
+func testPlanStoreSkipsTasksWithCorruptGroupIDWhenToggling() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let group = try store.addDailyGroup(title: "Work")
+    let task = try store.addDailyTask(groupID: group.id, title: "Keep this task")
+    try executeSQLite(url: url, sql: "UPDATE daily_tasks SET group_id = 'not-a-group-uuid' WHERE id = '\(task.id.uuidString)';")
+
+    do {
+        _ = try store.toggleTask(id: task.id)
+        throw TestFailure(description: "toggle should reject task with corrupt group id")
+    } catch {
+        // Expected: corrupt rows should not produce a valid task mutation.
+    }
+
+    let plan = try store.loadDailyPlan()
+    try expectEqual(plan.groups[0].tasks.count, 0, "corrupt-group task hidden from current plan")
 }
 
 func testPlanStoreEditsDeletesAndReordersDailyPlan() throws {
@@ -490,6 +536,8 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store archives current plan and searches history", testPlanStoreArchivesCurrentPlanAndSearchesHistory),
     ("plan store skips corrupt archive snapshot rows", testPlanStoreSkipsCorruptArchiveSnapshotRows),
     ("plan store skips corrupt daily rows while keeping good data", testPlanStoreSkipsCorruptDailyRowsWhileKeepingGoodData),
+    ("plan store recovers corrupt current plan id", testPlanStoreRecoversCorruptCurrentPlanID),
+    ("plan store skips tasks with corrupt group id when toggling", testPlanStoreSkipsTasksWithCorruptGroupIDWhenToggling),
     ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
     ("plan store rejects reorder of missing daily group without changing order", testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder),
     ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas),

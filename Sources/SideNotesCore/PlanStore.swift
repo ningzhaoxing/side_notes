@@ -35,19 +35,39 @@ public final class PlanStore {
             WHERE singleton = 1
             """
         ) { statement in
-            DailyPlan(
-                id: try UUID.from(sqliteText(statement, 0)),
+            (
+                id: try sqliteText(statement, 0),
                 planningDate: Date(timeIntervalSince1970: sqliteDouble(statement, 1)),
-                groups: [],
                 createdAt: Date(timeIntervalSince1970: sqliteDouble(statement, 2)),
                 updatedAt: Date(timeIntervalSince1970: sqliteDouble(statement, 3))
             )
         }
 
-        guard var plan = planRows.first else {
+        guard let row = planRows.first else {
             throw SQLiteStoreError.missingValue("current daily plan")
         }
 
+        let planID: UUID
+        let updatedAt: Date
+        if let existingID = UUID(uuidString: row.id) {
+            planID = existingID
+            updatedAt = row.updatedAt
+        } else {
+            planID = UUID()
+            updatedAt = Date()
+            try database.execute(
+                "UPDATE daily_plan SET id = ?, updated_at = ? WHERE singleton = 1",
+                [.text(planID.uuidString), .double(updatedAt.timeIntervalSince1970)]
+            )
+        }
+
+        var plan = DailyPlan(
+            id: planID,
+            planningDate: row.planningDate,
+            groups: [],
+            createdAt: row.createdAt,
+            updatedAt: updatedAt
+        )
         plan.groups = try loadDailyGroups()
         return plan
     }
