@@ -279,6 +279,17 @@ func testUserVisibleLongTermSurfacesRenderErrors() throws {
     try expect(longTermEditor.contains("errorMessage"), "long-term editor should render view model errors")
 }
 
+func testViewModelReloadPreservesArchiveSearchQuery() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
+    let reload = try sourceSection(source, from: "func reload()", to: "func flipCard()")
+    let searchArchives = try sourceSection(source, from: "func searchArchives", to: "private func saveSettings")
+
+    try expect(source.contains("currentArchiveQuery"), "view model should track current archive search query")
+    try expect(reload.contains("currentArchiveQuery"), "reload should apply current archive search query")
+    try expect(!reload.contains("archiveSearchResults = archives"), "reload should not reset filtered archive results to all archives")
+    try expect(searchArchives.contains("currentArchiveQuery = query"), "search should remember the current archive query")
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -554,6 +565,7 @@ let tests: [(String, () throws -> Void)] = [
     ("card size updates clamp to readable ranges", testCardSizeUpdatesClampToReadableRanges),
     ("window frame updates preserve position and clamp size", testWindowFrameUpdatesPreservePositionAndClampSize),
     ("user visible long-term surfaces render errors", testUserVisibleLongTermSurfacesRenderErrors),
+    ("view model reload preserves archive search query", testViewModelReloadPreservesArchiveSearchQuery),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),

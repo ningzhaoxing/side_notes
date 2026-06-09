@@ -20,6 +20,7 @@ final class PlanViewModel: ObservableObject {
     @Published var editorTab: EditorTab
 
     let store: PlanStore
+    private var currentArchiveQuery = ""
 
     init(store: PlanStore) {
         self.store = store
@@ -37,7 +38,7 @@ final class PlanViewModel: ObservableObject {
             dailyPlan = try store.loadDailyPlan()
             longTermAreas = try store.loadLongTermAreas()
             archives = try store.loadArchives()
-            archiveSearchResults = archives
+            archiveSearchResults = filteredArchives(archives, query: currentArchiveQuery)
             settings = try store.loadSettings()
             errorMessage = nil
         } catch {
@@ -209,12 +210,9 @@ final class PlanViewModel: ObservableObject {
     }
 
     func searchArchives(_ query: String) {
-        do {
-            archiveSearchResults = try store.searchArchives(query: query)
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        currentArchiveQuery = query
+        archiveSearchResults = filteredArchives(archives, query: query)
+        errorMessage = nil
     }
 
     private func saveSettings() {
@@ -233,6 +231,19 @@ final class PlanViewModel: ObservableObject {
             reload()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func filteredArchives(_ archives: [ArchiveDay], query: String) -> [ArchiveDay] {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !needle.isEmpty else {
+            return archives
+        }
+        return archives.filter { archive in
+            archive.groupsSnapshot.contains { group in
+                group.title.lowercased().contains(needle)
+                    || group.tasks.contains { $0.title.lowercased().contains(needle) }
+            }
         }
     }
 }
