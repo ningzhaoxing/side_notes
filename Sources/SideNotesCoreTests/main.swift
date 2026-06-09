@@ -253,6 +253,32 @@ func executeSQLiteScalar(url: URL, sql: String) throws -> String {
     return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 }
 
+func readWorkspaceFile(_ path: String) throws -> String {
+    let url = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        .appendingPathComponent(path)
+    return try String(contentsOf: url, encoding: .utf8)
+}
+
+func sourceSection(_ source: String, from startMarker: String, to endMarker: String) throws -> String {
+    guard let start = source.range(of: startMarker) else {
+        throw TestFailure(description: "missing source marker \(startMarker)")
+    }
+    guard let end = source[start.upperBound...].range(of: endMarker) else {
+        throw TestFailure(description: "missing source marker \(endMarker)")
+    }
+    return String(source[start.upperBound..<end.lowerBound])
+}
+
+func testUserVisibleLongTermSurfacesRenderErrors() throws {
+    let cardSource = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
+    let editorSource = try readWorkspaceFile("Sources/SideNotesApp/EditorView.swift")
+    let cardBackSide = try sourceSection(cardSource, from: "private var backSide", to: "private func emptyState")
+    let longTermEditor = try sourceSection(editorSource, from: "private var longTermEditor", to: "private var archiveBrowser")
+
+    try expect(cardBackSide.contains("errorMessage"), "card back side should render view model errors")
+    try expect(longTermEditor.contains("errorMessage"), "long-term editor should render view model errors")
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -527,6 +553,7 @@ let tests: [(String, () throws -> Void)] = [
     ("window frame outside screens falls back to default", testWindowFrameOutsideScreensFallsBackToDefault),
     ("card size updates clamp to readable ranges", testCardSizeUpdatesClampToReadableRanges),
     ("window frame updates preserve position and clamp size", testWindowFrameUpdatesPreservePositionAndClampSize),
+    ("user visible long-term surfaces render errors", testUserVisibleLongTermSurfacesRenderErrors),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),

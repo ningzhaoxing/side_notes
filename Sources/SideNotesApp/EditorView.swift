@@ -105,6 +105,13 @@ struct EditorView: View {
                     }
                 }
             }
+
+            HStack {
+                Spacer()
+                if let error = viewModel.errorMessage {
+                    Text(error).foregroundStyle(.red)
+                }
+            }
         }
     }
 

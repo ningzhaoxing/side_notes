@@ -190,6 +190,12 @@ struct PlanCardView: View {
                         InlineLongTermAreaView(area: area, viewModel: viewModel)
                     }
                 }
+
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
             }
             .padding(18)
         }
