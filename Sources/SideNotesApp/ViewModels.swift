@@ -21,6 +21,7 @@ final class PlanViewModel: ObservableObject {
 
     let store: PlanStore
     private var currentArchiveQuery = ""
+    private var persistedSettings = AppSettings.defaults()
 
     init(store: PlanStore) {
         self.store = store
@@ -40,6 +41,7 @@ final class PlanViewModel: ObservableObject {
             archives = try store.loadArchives()
             archiveSearchResults = filteredArchives(archives, query: currentArchiveQuery)
             settings = try store.loadSettings()
+            persistedSettings = settings
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -219,8 +221,10 @@ final class PlanViewModel: ObservableObject {
         do {
             try store.saveSettings(settings)
             settings = try store.loadSettings()
+            persistedSettings = settings
             errorMessage = nil
         } catch {
+            settings = persistedSettings
             errorMessage = error.localizedDescription
         }
     }

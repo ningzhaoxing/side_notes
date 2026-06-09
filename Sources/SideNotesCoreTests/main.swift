@@ -290,6 +290,15 @@ func testViewModelReloadPreservesArchiveSearchQuery() throws {
     try expect(searchArchives.contains("currentArchiveQuery = query"), "search should remember the current archive query")
 }
 
+func testViewModelRollsBackSettingsWhenSaveFails() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
+    let saveSettings = try sourceSection(source, from: "private func saveSettings", to: "private func performAndReload")
+
+    try expect(source.contains("persistedSettings"), "view model should keep last persisted settings")
+    try expect(saveSettings.contains("persistedSettings = settings"), "successful save should refresh persisted settings")
+    try expect(saveSettings.contains("settings = persistedSettings"), "failed save should roll back optimistic settings")
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -566,6 +575,7 @@ let tests: [(String, () throws -> Void)] = [
     ("window frame updates preserve position and clamp size", testWindowFrameUpdatesPreservePositionAndClampSize),
     ("user visible long-term surfaces render errors", testUserVisibleLongTermSurfacesRenderErrors),
     ("view model reload preserves archive search query", testViewModelReloadPreservesArchiveSearchQuery),
+    ("view model rolls back settings when save fails", testViewModelRollsBackSettingsWhenSaveFails),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),
