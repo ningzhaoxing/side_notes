@@ -89,6 +89,7 @@ public final class PlanStore {
 
     public func renameDailyGroup(id: UUID, title: String) throws {
         try database.transaction {
+            try ensureRowExists(table: "daily_groups", id: id, description: "daily group")
             try database.execute(
                 "UPDATE daily_groups SET title = ? WHERE id = ?",
                 [.text(title), .text(id.uuidString)]
@@ -106,6 +107,7 @@ public final class PlanStore {
 
     public func deleteDailyGroup(id: UUID) throws {
         try database.transaction {
+            try ensureRowExists(table: "daily_groups", id: id, description: "daily group")
             try database.execute(
                 "DELETE FROM daily_groups WHERE id = ?",
                 [.text(id.uuidString)]
@@ -142,6 +144,7 @@ public final class PlanStore {
 
     public func renameDailyTask(id: UUID, title: String) throws {
         try database.transaction {
+            try ensureRowExists(table: "daily_tasks", id: id, description: "daily task")
             try database.execute(
                 "UPDATE daily_tasks SET title = ?, updated_at = ? WHERE id = ?",
                 [.text(title), .double(Date().timeIntervalSince1970), .text(id.uuidString)]
@@ -168,6 +171,7 @@ public final class PlanStore {
 
     public func deleteDailyTask(id: UUID) throws {
         try database.transaction {
+            try ensureRowExists(table: "daily_tasks", id: id, description: "daily task")
             try database.execute(
                 "DELETE FROM daily_tasks WHERE id = ?",
                 [.text(id.uuidString)]
@@ -281,10 +285,13 @@ public final class PlanStore {
     }
 
     public func renameLongTermArea(id: UUID, title: String) throws {
-        try database.execute(
-            "UPDATE long_term_areas SET title = ?, updated_at = ? WHERE id = ?",
-            [.text(title), .double(Date().timeIntervalSince1970), .text(id.uuidString)]
-        )
+        try database.transaction {
+            try ensureRowExists(table: "long_term_areas", id: id, description: "long-term area")
+            try database.execute(
+                "UPDATE long_term_areas SET title = ?, updated_at = ? WHERE id = ?",
+                [.text(title), .double(Date().timeIntervalSince1970), .text(id.uuidString)]
+            )
+        }
     }
 
     public func moveLongTermArea(id: UUID, toSortOrder sortOrder: Int) throws {
@@ -294,10 +301,13 @@ public final class PlanStore {
     }
 
     public func deleteLongTermArea(id: UUID) throws {
-        try database.execute(
-            "DELETE FROM long_term_areas WHERE id = ?",
-            [.text(id.uuidString)]
-        )
+        try database.transaction {
+            try ensureRowExists(table: "long_term_areas", id: id, description: "long-term area")
+            try database.execute(
+                "DELETE FROM long_term_areas WHERE id = ?",
+                [.text(id.uuidString)]
+            )
+        }
     }
 
     public func addLongTermItem(areaID: UUID, title: String) throws -> LongTermItem {
@@ -326,10 +336,13 @@ public final class PlanStore {
     }
 
     public func renameLongTermItem(id: UUID, title: String) throws {
-        try database.execute(
-            "UPDATE long_term_items SET title = ?, updated_at = ? WHERE id = ?",
-            [.text(title), .double(Date().timeIntervalSince1970), .text(id.uuidString)]
-        )
+        try database.transaction {
+            try ensureRowExists(table: "long_term_items", id: id, description: "long-term item")
+            try database.execute(
+                "UPDATE long_term_items SET title = ?, updated_at = ? WHERE id = ?",
+                [.text(title), .double(Date().timeIntervalSince1970), .text(id.uuidString)]
+            )
+        }
     }
 
     public func moveLongTermItem(id: UUID, toSortOrder sortOrder: Int) throws {
@@ -348,10 +361,13 @@ public final class PlanStore {
     }
 
     public func deleteLongTermItem(id: UUID) throws {
-        try database.execute(
-            "DELETE FROM long_term_items WHERE id = ?",
-            [.text(id.uuidString)]
-        )
+        try database.transaction {
+            try ensureRowExists(table: "long_term_items", id: id, description: "long-term item")
+            try database.execute(
+                "DELETE FROM long_term_items WHERE id = ?",
+                [.text(id.uuidString)]
+            )
+        }
     }
 
     public func archiveCurrentPlan(now: Date = Date()) throws -> ArchiveDay {
@@ -743,6 +759,18 @@ public final class PlanStore {
                 "UPDATE \(table) SET sort_order = ? WHERE id = ?",
                 [.int(index), .text(rowID)]
             )
+        }
+    }
+
+    private func ensureRowExists(table: String, id: UUID, description: String) throws {
+        let count = try database.query(
+            "SELECT COUNT(*) FROM \(table) WHERE id = ?",
+            [.text(id.uuidString)]
+        ) { statement in
+            sqliteInt(statement, 0)
+        }.first ?? 0
+        guard count > 0 else {
+            throw SQLiteStoreError.missingValue("\(description) \(id)")
         }
     }
 

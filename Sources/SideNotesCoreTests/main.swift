@@ -23,6 +23,16 @@ func expectEqual(_ actual: Double, _ expected: Double, accuracy: Double, _ messa
     }
 }
 
+func expectThrows(_ message: String, _ operation: () throws -> Void) throws {
+    var didThrow = false
+    do {
+        try operation()
+    } catch {
+        didThrow = true
+    }
+    try expect(didThrow, message)
+}
+
 func testDefaultSettingsAreReadableAndUsable() throws {
     let settings = AppSettings.defaults()
 
@@ -537,11 +547,8 @@ func testPlanStoreSkipsTasksWithCorruptGroupIDWhenToggling() throws {
     let task = try store.addDailyTask(groupID: group.id, title: "Keep this task")
     try executeSQLite(url: url, sql: "UPDATE daily_tasks SET group_id = 'not-a-group-uuid' WHERE id = '\(task.id.uuidString)';")
 
-    do {
+    try expectThrows("toggle should reject task with corrupt group id") {
         _ = try store.toggleTask(id: task.id)
-        throw TestFailure(description: "toggle should reject task with corrupt group id")
-    } catch {
-        // Expected: corrupt rows should not produce a valid task mutation.
     }
 
     let plan = try store.loadDailyPlan()
@@ -579,16 +586,39 @@ func testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder() throws
     _ = try store.addDailyGroup(title: "Work")
     _ = try store.addDailyGroup(title: "Learning")
 
-    do {
+    try expectThrows("missing daily group reorder should fail") {
         try store.moveDailyGroup(id: UUID(), toSortOrder: 0)
-        throw TestFailure(description: "missing daily group reorder should fail")
-    } catch {
-        // Expected: stale UI events should not rewrite existing sort orders.
     }
 
     let plan = try store.loadDailyPlan()
     try expectEqual(plan.groups.map { $0.title }, ["Work", "Learning"], "daily group order unchanged after missing reorder")
     try expectEqual(plan.groups.map { $0.sortOrder }, [0, 1], "daily group sort orders unchanged after missing reorder")
+}
+
+func testPlanStoreRejectsMissingDailyRenameAndDeleteOperations() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+
+    let group = try store.addDailyGroup(title: "Work")
+    let task = try store.addDailyTask(groupID: group.id, title: "Keep this task")
+    let missingID = UUID()
+
+    try expectThrows("missing daily group rename should fail") {
+        try store.renameDailyGroup(id: missingID, title: "Ghost group")
+    }
+    try expectThrows("missing daily group delete should fail") {
+        try store.deleteDailyGroup(id: missingID)
+    }
+    try expectThrows("missing daily task rename should fail") {
+        try store.renameDailyTask(id: missingID, title: "Ghost task")
+    }
+    try expectThrows("missing daily task delete should fail") {
+        try store.deleteDailyTask(id: missingID)
+    }
+
+    let plan = try store.loadDailyPlan()
+    try expectEqual(plan.groups.map { $0.title }, ["Work"], "daily group unchanged after missing operations")
+    try expectEqual(plan.groups[0].tasks.map { $0.id }, [task.id], "daily task unchanged after missing operations")
 }
 
 func testPlanStoreEditsDeletesAndReordersLongTermAreas() throws {
@@ -622,16 +652,39 @@ func testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder() thro
     _ = try store.addLongTermArea(title: "Reading")
     _ = try store.addLongTermArea(title: "English")
 
-    do {
+    try expectThrows("missing long-term area reorder should fail") {
         try store.moveLongTermArea(id: UUID(), toSortOrder: 0)
-        throw TestFailure(description: "missing long-term area reorder should fail")
-    } catch {
-        // Expected: stale UI events should not rewrite existing sort orders.
     }
 
     let areas = try store.loadLongTermAreas()
     try expectEqual(areas.map { $0.title }, ["Reading", "English"], "long-term area order unchanged after missing reorder")
     try expectEqual(areas.map { $0.sortOrder }, [0, 1], "long-term area sort orders unchanged after missing reorder")
+}
+
+func testPlanStoreRejectsMissingLongTermRenameAndDeleteOperations() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+
+    let area = try store.addLongTermArea(title: "Reading")
+    let item = try store.addLongTermItem(areaID: area.id, title: "Keep this item")
+    let missingID = UUID()
+
+    try expectThrows("missing long-term area rename should fail") {
+        try store.renameLongTermArea(id: missingID, title: "Ghost area")
+    }
+    try expectThrows("missing long-term area delete should fail") {
+        try store.deleteLongTermArea(id: missingID)
+    }
+    try expectThrows("missing long-term item rename should fail") {
+        try store.renameLongTermItem(id: missingID, title: "Ghost item")
+    }
+    try expectThrows("missing long-term item delete should fail") {
+        try store.deleteLongTermItem(id: missingID)
+    }
+
+    let areas = try store.loadLongTermAreas()
+    try expectEqual(areas.map { $0.title }, ["Reading"], "long-term area unchanged after missing operations")
+    try expectEqual(areas[0].items.map { $0.id }, [item.id], "long-term item unchanged after missing operations")
 }
 
 func testPlanStoreSkipsCorruptLongTermRowsWhileKeepingGoodData() throws {
@@ -690,8 +743,10 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store skips tasks with corrupt group id when toggling", testPlanStoreSkipsTasksWithCorruptGroupIDWhenToggling),
     ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
     ("plan store rejects reorder of missing daily group without changing order", testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder),
+    ("plan store rejects missing daily rename and delete operations", testPlanStoreRejectsMissingDailyRenameAndDeleteOperations),
     ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas),
     ("plan store rejects reorder of missing long-term area without changing order", testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder),
+    ("plan store rejects missing long-term rename and delete operations", testPlanStoreRejectsMissingLongTermRenameAndDeleteOperations),
     ("plan store skips corrupt long-term rows while keeping good data", testPlanStoreSkipsCorruptLongTermRowsWhileKeepingGoodData)
 ]
 
