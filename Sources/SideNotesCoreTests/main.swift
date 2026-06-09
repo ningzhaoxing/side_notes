@@ -299,6 +299,15 @@ func testViewModelRollsBackSettingsWhenSaveFails() throws {
     try expect(saveSettings.contains("settings = persistedSettings"), "failed save should roll back optimistic settings")
 }
 
+func testPinToggleUsesSettingsAfterSaveAttempt() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
+    let controls = try sourceSection(source, from: "private var controls", to: "private func toolbarButton")
+
+    try expect(controls.contains("viewModel.setPinned(next)"), "pin button should ask view model to persist desired state")
+    try expect(controls.contains("onPinToggle(viewModel.settings.isPinned)"), "pin window state should use persisted or rolled-back settings")
+    try expect(!controls.contains("onPinToggle(next)"), "pin window state should not use optimistic next value after possible rollback")
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -576,6 +585,7 @@ let tests: [(String, () throws -> Void)] = [
     ("user visible long-term surfaces render errors", testUserVisibleLongTermSurfacesRenderErrors),
     ("view model reload preserves archive search query", testViewModelReloadPreservesArchiveSearchQuery),
     ("view model rolls back settings when save fails", testViewModelRollsBackSettingsWhenSaveFails),
+    ("pin toggle uses settings after save attempt", testPinToggleUsesSettingsAfterSaveAttempt),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),

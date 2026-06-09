@@ -66,7 +66,7 @@ struct PlanCardView: View {
             ) {
                 let next = !viewModel.settings.isPinned
                 viewModel.setPinned(next)
-                onPinToggle(next)
+                onPinToggle(viewModel.settings.isPinned)
             }
             toolbarButton(systemName: "arrow.triangle.2.circlepath", label: "翻面") {
                 viewModel.flipCard()
