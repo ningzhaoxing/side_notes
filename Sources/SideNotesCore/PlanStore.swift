@@ -117,11 +117,13 @@ public final class PlanStore {
     }
 
     public func addDailyTask(groupID: UUID, title: String) throws -> DailyTask {
-        let task = DailyTask(
-            title: title,
-            sortOrder: try nextSortOrder(table: "daily_tasks", ownerColumn: "group_id", ownerID: groupID)
-        )
+        var insertedTask: DailyTask?
         try database.transaction {
+            try ensureRowExists(table: "daily_groups", id: groupID, description: "daily group")
+            let task = DailyTask(
+                title: title,
+                sortOrder: try nextSortOrder(table: "daily_tasks", ownerColumn: "group_id", ownerID: groupID)
+            )
             try database.execute(
                 """
                 INSERT INTO daily_tasks (id, group_id, title, is_completed, sort_order, created_at, updated_at)
@@ -138,8 +140,12 @@ public final class PlanStore {
                 ]
             )
             try touchDailyPlan()
+            insertedTask = task
         }
-        return task
+        guard let insertedTask else {
+            throw SQLiteStoreError.invalidValue("daily task insertion")
+        }
+        return insertedTask
     }
 
     public func renameDailyTask(id: UUID, title: String) throws {
@@ -311,28 +317,36 @@ public final class PlanStore {
     }
 
     public func addLongTermItem(areaID: UUID, title: String) throws -> LongTermItem {
-        let now = Date()
-        let item = LongTermItem(
-            title: title,
-            sortOrder: try nextSortOrder(table: "long_term_items", ownerColumn: "area_id", ownerID: areaID),
-            createdAt: now,
-            updatedAt: now
-        )
-        try database.execute(
-            """
-            INSERT INTO long_term_items (id, area_id, title, sort_order, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            [
-                .text(item.id.uuidString),
-                .text(areaID.uuidString),
-                .text(item.title),
-                .int(item.sortOrder),
-                .double(item.createdAt.timeIntervalSince1970),
-                .double(item.updatedAt.timeIntervalSince1970)
-            ]
-        )
-        return item
+        var insertedItem: LongTermItem?
+        try database.transaction {
+            try ensureRowExists(table: "long_term_areas", id: areaID, description: "long-term area")
+            let now = Date()
+            let item = LongTermItem(
+                title: title,
+                sortOrder: try nextSortOrder(table: "long_term_items", ownerColumn: "area_id", ownerID: areaID),
+                createdAt: now,
+                updatedAt: now
+            )
+            try database.execute(
+                """
+                INSERT INTO long_term_items (id, area_id, title, sort_order, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    .text(item.id.uuidString),
+                    .text(areaID.uuidString),
+                    .text(item.title),
+                    .int(item.sortOrder),
+                    .double(item.createdAt.timeIntervalSince1970),
+                    .double(item.updatedAt.timeIntervalSince1970)
+                ]
+            )
+            insertedItem = item
+        }
+        guard let insertedItem else {
+            throw SQLiteStoreError.invalidValue("long-term item insertion")
+        }
+        return insertedItem
     }
 
     public func renameLongTermItem(id: UUID, title: String) throws {

@@ -683,6 +683,45 @@ func testPlanStoreRejectsMissingDailyRenameAndDeleteOperations() throws {
     try expectEqual(plan.groups[0].tasks.map { $0.id }, [task.id], "daily task unchanged after missing operations")
 }
 
+func testPlanStoreRejectsMissingParentWhenAddingItems() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+
+    let group = try store.addDailyGroup(title: "Work")
+    _ = try store.addDailyTask(groupID: group.id, title: "Keep this task")
+    let area = try store.addLongTermArea(title: "Reading")
+    _ = try store.addLongTermItem(areaID: area.id, title: "Keep this item")
+
+    do {
+        _ = try store.addDailyTask(groupID: UUID(), title: "Ghost task")
+        throw TestFailure(description: "missing daily group add should throw")
+    } catch let failure as TestFailure {
+        throw failure
+    } catch {
+        try expect(
+            error.localizedDescription.contains("missing value: daily group"),
+            "missing daily group add should expose readable error, got \(error.localizedDescription)"
+        )
+    }
+
+    do {
+        _ = try store.addLongTermItem(areaID: UUID(), title: "Ghost item")
+        throw TestFailure(description: "missing long-term area add should throw")
+    } catch let failure as TestFailure {
+        throw failure
+    } catch {
+        try expect(
+            error.localizedDescription.contains("missing value: long-term area"),
+            "missing long-term area add should expose readable error, got \(error.localizedDescription)"
+        )
+    }
+
+    let plan = try store.loadDailyPlan()
+    let areas = try store.loadLongTermAreas()
+    try expectEqual(plan.groups[0].tasks.map { $0.title }, ["Keep this task"], "daily task list unchanged after missing parent add")
+    try expectEqual(areas[0].items.map { $0.title }, ["Keep this item"], "long-term item list unchanged after missing parent add")
+}
+
 func testStoreErrorsExposeReadableLocalizedDescriptions() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -829,6 +868,7 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
     ("plan store rejects reorder of missing daily group without changing order", testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder),
     ("plan store rejects missing daily rename and delete operations", testPlanStoreRejectsMissingDailyRenameAndDeleteOperations),
+    ("plan store rejects missing parent when adding items", testPlanStoreRejectsMissingParentWhenAddingItems),
     ("store errors expose readable localized descriptions", testStoreErrorsExposeReadableLocalizedDescriptions),
     ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas),
     ("plan store rejects reorder of missing long-term area without changing order", testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder),
