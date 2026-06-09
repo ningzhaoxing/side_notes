@@ -1,7 +1,7 @@
 import Foundation
 import SQLite3
 
-enum SQLiteStoreError: Error, CustomStringConvertible {
+enum SQLiteStoreError: Error, CustomStringConvertible, LocalizedError {
     case openFailed(String)
     case prepareFailed(String)
     case stepFailed(String)
@@ -18,6 +18,10 @@ enum SQLiteStoreError: Error, CustomStringConvertible {
         case .missingValue(let message): "missing value: \(message)"
         case .invalidValue(let message): "invalid value: \(message)"
         }
+    }
+
+    var errorDescription: String? {
+        description
     }
 }
 
@@ -148,4 +152,3 @@ func sqliteDouble(_ statement: OpaquePointer, _ index: Int32) -> Double {
 func sqliteInt(_ statement: OpaquePointer, _ index: Int32) -> Int {
     Int(sqlite3_column_int64(statement, index))
 }
-

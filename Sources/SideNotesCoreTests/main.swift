@@ -621,6 +621,23 @@ func testPlanStoreRejectsMissingDailyRenameAndDeleteOperations() throws {
     try expectEqual(plan.groups[0].tasks.map { $0.id }, [task.id], "daily task unchanged after missing operations")
 }
 
+func testStoreErrorsExposeReadableLocalizedDescriptions() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+
+    do {
+        try store.renameDailyGroup(id: UUID(), title: "Ghost group")
+        throw TestFailure(description: "missing row should throw a store error")
+    } catch let failure as TestFailure {
+        throw failure
+    } catch {
+        try expect(
+            error.localizedDescription.contains("missing value: daily group"),
+            "store error should have readable localized description, got \(error.localizedDescription)"
+        )
+    }
+}
+
 func testPlanStoreEditsDeletesAndReordersLongTermAreas() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -744,6 +761,7 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
     ("plan store rejects reorder of missing daily group without changing order", testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder),
     ("plan store rejects missing daily rename and delete operations", testPlanStoreRejectsMissingDailyRenameAndDeleteOperations),
+    ("store errors expose readable localized descriptions", testStoreErrorsExposeReadableLocalizedDescriptions),
     ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas),
     ("plan store rejects reorder of missing long-term area without changing order", testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder),
     ("plan store rejects missing long-term rename and delete operations", testPlanStoreRejectsMissingLongTermRenameAndDeleteOperations),
