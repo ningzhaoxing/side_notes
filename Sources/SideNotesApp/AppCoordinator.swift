@@ -120,7 +120,7 @@ final class AppCoordinator: NSObject {
             }
         }
         pendingHideWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: workItem)
     }
 
     private func cancelPendingHide() {
