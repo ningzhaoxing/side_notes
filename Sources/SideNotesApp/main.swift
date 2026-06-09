@@ -11,7 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         didStart = true
         NSApp.setActivationPolicy(.accessory)
         do {
-            if ProcessInfo.processInfo.environment["SIDE_NOTES_DISABLE_SINGLE_INSTANCE"] != "1" {
+            if ProcessInfo.processInfo.environment["SIDE_NOTES_ALLOW_MULTIPLE_INSTANCES"] != "1" {
                 do {
                     instanceGuard = try SingleInstanceGuard()
                 } catch SingleInstanceGuard.Error.alreadyRunning {

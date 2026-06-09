@@ -15,6 +15,8 @@ if [[ "${SIDENOTES_SKIP_QUIT_RUNNING:-0}" != "1" ]]; then
   osascript -e 'tell application id "com.ningzhaoxing.sidenotes" to quit' >/dev/null 2>&1 || true
   killall SideNotes >/dev/null 2>&1 || true
   sleep 0.5
+  killall -9 SideNotes >/dev/null 2>&1 || true
+  sleep 0.5
 fi
 
 mkdir -p "$INSTALL_DIR"
