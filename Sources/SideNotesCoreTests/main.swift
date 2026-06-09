@@ -360,6 +360,24 @@ func testRenameInputsRevertAfterFailedSave() throws {
     try expect(editorSource.contains("if !viewModel.renameLongTermItem(id: item.id, title: title) {\n            title = item.title\n        }"), "editor long-term item title should revert after failed rename")
 }
 
+func testTriggerSideSettingIsEditableAndAppliedLive() throws {
+    let viewModelSource = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
+    let editorSource = try readWorkspaceFile("Sources/SideNotesApp/EditorView.swift")
+    let coordinatorSource = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
+    let edgeTriggerSource = try readWorkspaceFile("Sources/SideNotesApp/EdgeTriggerController.swift")
+    let cardControllerSource = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let appearanceEditor = try sourceSection(editorSource, from: "private var appearanceEditor", to: "private struct DailyGroupEditor")
+
+    try expect(viewModelSource.contains("func setTriggerSide(_ triggerSide: TriggerSide)"), "view model should persist trigger side changes")
+    try expect(appearanceEditor.contains("Picker(\"侧边位置\""), "appearance editor should expose trigger side choice")
+    try expect(appearanceEditor.contains("viewModel.setTriggerSide($0)"), "trigger side picker should save through view model")
+    try expect(coordinatorSource.contains("settingsCancellable"), "coordinator should observe live settings changes")
+    try expect(coordinatorSource.contains("edgeTrigger?.setTriggerSide(settings.triggerSide)"), "coordinator should update edge trigger side live")
+    try expect(coordinatorSource.contains("cardController.updateForSettingsChange()"), "coordinator should let visible card or handle react to live setting changes")
+    try expect(edgeTriggerSource.contains("func setTriggerSide(_ triggerSide: TriggerSide)"), "edge trigger should allow live side updates")
+    try expect(cardControllerSource.contains("func updateForSettingsChange()"), "card controller should reposition collapsed handle after settings changes")
+}
+
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -368,6 +386,7 @@ func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     let task = try store.addDailyTask(groupID: group.id, title: "Prepare plan")
     _ = try store.toggleTask(id: task.id)
     var settings = try store.loadSettings()
+    settings.triggerSide = .left
     settings.isPinned = true
     settings.visibleSide = .back
     settings.cardOpacity = 0.52
@@ -385,6 +404,7 @@ func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
     try expectEqual(plan.groups[0].tasks.count, 1, "daily task count")
     try expectEqual(plan.groups[0].tasks[0].title, "Prepare plan", "daily task title")
     try expect(plan.groups[0].tasks[0].isCompleted, "daily task completion persisted")
+    try expectEqual(reopenedSettings.triggerSide, .left, "trigger side persisted")
     try expect(reopenedSettings.isPinned, "pinned state persisted")
     try expectEqual(reopenedSettings.visibleSide, .back, "visible side persisted")
     try expectEqual(reopenedSettings.cardOpacity, 0.52, accuracy: 0.001, "opacity persisted")
@@ -641,6 +661,7 @@ let tests: [(String, () throws -> Void)] = [
     ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
     ("rename inputs revert after failed save", testRenameInputsRevertAfterFailedSave),
+    ("trigger side setting is editable and applied live", testTriggerSideSettingIsEditableAndAppliedLive),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),

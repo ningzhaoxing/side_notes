@@ -58,6 +58,11 @@ final class PlanViewModel: ObservableObject {
         saveSettings()
     }
 
+    func setTriggerSide(_ triggerSide: TriggerSide) {
+        settings.triggerSide = triggerSide
+        saveSettings()
+    }
+
     func setCardOpacity(_ opacity: Double) {
         settings.cardOpacity = opacity
         settings.validate()

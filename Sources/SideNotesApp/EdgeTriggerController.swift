@@ -3,7 +3,7 @@ import SideNotesCore
 
 @MainActor
 final class EdgeTriggerController {
-    private let triggerSide: TriggerSide
+    private var triggerSide: TriggerSide
     private let onShow: () -> Void
     private let onHideCheck: (NSPoint) -> Void
     private var timer: Timer?
@@ -12,6 +12,10 @@ final class EdgeTriggerController {
         self.triggerSide = triggerSide
         self.onShow = onShow
         self.onHideCheck = onHideCheck
+    }
+
+    func setTriggerSide(_ triggerSide: TriggerSide) {
+        self.triggerSide = triggerSide
     }
 
     func start() {

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import SideNotesCore
 
@@ -15,6 +16,7 @@ final class AppCoordinator: NSObject {
     private var pendingHideWorkItem: DispatchWorkItem?
     private var quitRequestTimer: Timer?
     private var isApplyingEditorFrame = false
+    private var settingsCancellable: AnyCancellable?
 
     init(store: PlanStore) {
         let viewModel = PlanViewModel(store: store)
@@ -46,6 +48,13 @@ final class AppCoordinator: NSObject {
             name: Self.quitNotificationName,
             object: nil
         )
+        settingsCancellable = viewModel.$settings
+            .dropFirst()
+            .sink { [weak self] settings in
+                Task { @MainActor in
+                    self?.applyLiveSettings(settings)
+                }
+            }
     }
 
     deinit {
@@ -156,6 +165,11 @@ final class AppCoordinator: NSObject {
     private func cancelPendingHide() {
         pendingHideWorkItem?.cancel()
         pendingHideWorkItem = nil
+    }
+
+    private func applyLiveSettings(_ settings: AppSettings) {
+        edgeTrigger?.setTriggerSide(settings.triggerSide)
+        cardController.updateForSettingsChange()
     }
 
     private func makeEditorWindow() -> NSWindow {

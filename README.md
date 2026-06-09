@@ -52,7 +52,7 @@ The app runs as a menu-bar accessory and opens with the card pinned by default, 
 - Use `设置` on the card to open the `外观` tab directly.
 - Use `退出` on the card or the menu-bar item to quit the app.
 - Use `归档` to archive the current day and start a blank plan.
-- Use the editor's `外观` tab to change card opacity and corner radius.
+- Use the editor's `外观` tab to change the side edge, card opacity, and corner radius.
 
 ## Data
 

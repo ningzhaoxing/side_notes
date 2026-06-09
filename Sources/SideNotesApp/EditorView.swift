@@ -156,6 +156,15 @@ struct EditorView: View {
     private var appearanceEditor: some View {
         Form {
             Section("悬浮卡片") {
+                Picker("侧边位置", selection: Binding(
+                    get: { viewModel.settings.triggerSide },
+                    set: { viewModel.setTriggerSide($0) }
+                )) {
+                    Text("左侧").tag(TriggerSide.left)
+                    Text("右侧").tag(TriggerSide.right)
+                }
+                .pickerStyle(.segmented)
+
                 VStack(alignment: .leading) {
                     Text("透明度 \(viewModel.settings.cardOpacity, specifier: "%.2f")")
                     Slider(

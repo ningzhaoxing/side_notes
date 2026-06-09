@@ -80,6 +80,13 @@ final class PlanCardWindowController: NSObject {
         applyFrame(resizedFrame(), animate: false)
     }
 
+    func updateForSettingsChange() {
+        window.level = viewModel.settings.isPinned ? .floating : .normal
+        if isCollapsed {
+            applyFrame(bookmarkFrame(), animate: false)
+        }
+    }
+
     func showBookmark() {
         guard !viewModel.settings.isPinned else { return }
         guard !window.isVisible || !isCollapsed else {
