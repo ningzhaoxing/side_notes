@@ -425,13 +425,37 @@ func testAddInputsClearOnlyAfterSuccessfulSave() throws {
 
 func testPlanCardWindowShowAndBookmarkAreIdempotent() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
-    let show = try sourceSection(source, from: "func show()", to: "func hide()")
+    let show = try sourceSection(source, from: "func show(revealedFromBookmark", to: "func hide()")
     let showBookmark = try sourceSection(source, from: "func showBookmark()", to: "func hideBookmark()")
 
     try expect(show.contains("guard !window.isVisible || isCollapsed else"), "expanded card show should not rebuild or animate an already visible card")
     try expect(show.contains("window.orderFrontRegardless()"), "expanded card show should still bring the existing window forward")
     try expect(showBookmark.contains("guard !window.isVisible || !isCollapsed else"), "bookmark show should not rebuild or animate an already visible handle")
     try expect(showBookmark.contains("window.orderFrontRegardless()"), "bookmark show should still bring the existing handle forward")
+}
+
+func testExpandedCardGetsAutoHideGraceAfterBookmarkReveal() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let show = try sourceSection(source, from: "func show(revealedFromBookmark", to: "func hide()")
+    let shouldAutoHide = try sourceSection(source, from: "func shouldAutoHide", to: "func resizeCard")
+    let installBookmarkView = try sourceSection(source, from: "private func installBookmarkView", to: "private func cardPresentationFrame")
+
+    try expect(source.contains("autoHideGraceUntil"), "card controller should track a grace period after revealing from the side handle")
+    try expect(source.contains("revealAutoHideGraceDuration: TimeInterval = 15.0"), "side-handle reveal grace should be long enough to click controls comfortably")
+    try expect(source.contains("requiresMouseEntryBeforeAutoHide"), "manual side-handle reveal should wait for mouse entry before auto-hide")
+    try expect(source.contains("func show(revealedFromBookmark: Bool = false)"), "show should distinguish manual side-handle reveal from edge hover reveal")
+    try expect(show.contains("if revealedFromBookmark"), "show should mark manual side-handle reveals")
+    guard
+        let graceIndex = show.range(of: "autoHideGraceUntil = Date().addingTimeInterval(revealAutoHideGraceDuration)")?.lowerBound,
+        let guardIndex = show.range(of: "guard !window.isVisible || isCollapsed else")?.lowerBound
+    else {
+        throw TestFailure(description: "show should refresh auto-hide grace before the already-visible early return")
+    }
+    try expect(graceIndex < guardIndex, "show should refresh auto-hide grace before the already-visible early return")
+    try expect(shouldAutoHide.contains("Date() >= autoHideGraceUntil"), "auto-hide should be blocked while the reveal grace period is active")
+    try expect(shouldAutoHide.contains("requiresMouseEntryBeforeAutoHide = false"), "mouse entry into the card should clear the manual reveal latch")
+    try expect(shouldAutoHide.contains("guard !requiresMouseEntryBeforeAutoHide else"), "auto-hide should wait until the user has actually reached the card")
+    try expect(installBookmarkView.contains("show(revealedFromBookmark: true)"), "side handle should use the manual reveal path")
 }
 
 func testRenameInputsRevertAfterFailedSave() throws {
@@ -1141,6 +1165,7 @@ let tests: [(String, () throws -> Void)] = [
     ("pin toggle uses settings after save attempt", testPinToggleUsesSettingsAfterSaveAttempt),
     ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
+    ("expanded card gets auto-hide grace after bookmark reveal", testExpandedCardGetsAutoHideGraceAfterBookmarkReveal),
     ("rename inputs revert after failed save", testRenameInputsRevertAfterFailedSave),
     ("editor rename fields save on focus loss", testEditorRenameFieldsSaveOnFocusLoss),
     ("view model skips unchanged renames", testViewModelSkipsUnchangedRenames),

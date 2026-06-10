@@ -8,6 +8,9 @@ final class PlanCardWindowController: NSObject {
     private let window: NSWindow
     private var isCollapsed = false
     private var isApplyingProgrammaticFrame = false
+    private var autoHideGraceUntil = Date.distantPast
+    private let revealAutoHideGraceDuration: TimeInterval = 15.0
+    private var requiresMouseEntryBeforeAutoHide = false
     var onPinToggle: ((Bool) -> Void)?
     var onEdit: (() -> Void)?
     var onSettings: (() -> Void)?
@@ -32,8 +35,14 @@ final class PlanCardWindowController: NSObject {
         installRootView()
     }
 
-    func show() {
+    func show(revealedFromBookmark: Bool = false) {
         window.level = viewModel.settings.isPinned ? .floating : .normal
+        if !viewModel.settings.isPinned {
+            autoHideGraceUntil = Date().addingTimeInterval(revealAutoHideGraceDuration)
+        }
+        if revealedFromBookmark {
+            requiresMouseEntryBeforeAutoHide = true
+        }
         guard !window.isVisible || isCollapsed else {
             window.orderFrontRegardless()
             return
@@ -70,7 +79,18 @@ final class PlanCardWindowController: NSObject {
         guard !isTextEditing else {
             return false
         }
-        return !window.frame.insetBy(dx: -80, dy: -80).contains(mouseLocation)
+        guard Date() >= autoHideGraceUntil else {
+            return false
+        }
+        let interactionFrame = window.frame.insetBy(dx: -80, dy: -80)
+        if interactionFrame.contains(mouseLocation) {
+            requiresMouseEntryBeforeAutoHide = false
+            return false
+        }
+        guard !requiresMouseEntryBeforeAutoHide else {
+            return false
+        }
+        return true
     }
 
     func resizeCard(to size: CGSize) {
@@ -134,7 +154,7 @@ final class PlanCardWindowController: NSObject {
 
     private func installBookmarkView() {
         window.contentView = DrawerHandleButton(frame: NSRect(x: 0, y: 0, width: 38, height: 112), onActivate: { [weak self] in
-            self?.show()
+            self?.show(revealedFromBookmark: true)
         }, onQuit: { [weak self] in
             self?.onQuit?()
         })
