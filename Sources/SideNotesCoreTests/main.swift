@@ -539,6 +539,20 @@ func testCardWindowVisibilityUsesUsableVisibleArea() throws {
     )
 }
 
+func testPinnedCardFallbackFrameIsPersisted() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let cardPresentationFrame = try sourceSection(source, from: "private func cardPresentationFrame", to: "private func edgeFrame")
+
+    try expect(
+        cardPresentationFrame.contains("viewModel.setCardFrame(frame.storedRect"),
+        "pinned card fallback frame should be persisted after restoring to the screen edge"
+    )
+    try expect(
+        cardPresentationFrame.contains("return frame"),
+        "pinned card fallback should return the same frame it persisted"
+    )
+}
+
 func testEditorWindowRestoreUsesUsableVisibilityAndPersistsFallback() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
     let restoredEditorFrame = try sourceSection(source, from: "private func restoredEditorFrame", to: "private func applyEditorFrame")
@@ -988,6 +1002,7 @@ let tests: [(String, () throws -> Void)] = [
     ("expanded unpinned card repositions only when trigger side changes", testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges),
     ("pinned card resize preserves custom position", testPinnedCardResizePreservesCustomPosition),
     ("card window visibility uses usable visible area", testCardWindowVisibilityUsesUsableVisibleArea),
+    ("pinned card fallback frame is persisted", testPinnedCardFallbackFrameIsPersisted),
     ("editor window restore uses usable visibility and persists fallback", testEditorWindowRestoreUsesUsableVisibilityAndPersistsFallback),
     ("stale instance terminator matches legacy executables", testStaleInstanceTerminatorMatchesLegacyExecutables),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),

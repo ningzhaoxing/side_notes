@@ -145,7 +145,11 @@ final class PlanCardWindowController: NSObject {
         if viewModel.settings.isPinned, frameIsVisible(storedFrame) {
             return storedFrame
         }
-        return edgeFrame()
+        let frame = edgeFrame()
+        if viewModel.settings.isPinned {
+            viewModel.setCardFrame(frame.storedRect, visibleFrames: NSScreen.storedVisibleFrames)
+        }
+        return frame
     }
 
     private func edgeFrame() -> NSRect {
