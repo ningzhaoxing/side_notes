@@ -218,6 +218,7 @@ public final class PlanStore {
         )
 
         try database.transaction {
+            try ensureRowExists(table: "daily_groups", id: row.groupID, description: "daily task group")
             try database.execute(
                 """
                 UPDATE daily_tasks

@@ -762,6 +762,28 @@ func testPlanStoreSkipsTasksWithCorruptGroupIDWhenToggling() throws {
     try expectEqual(plan.groups[0].tasks.count, 0, "corrupt-group task hidden from current plan")
 }
 
+func testPlanStoreRejectsOrphanDailyTaskToggle() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let group = try store.addDailyGroup(title: "Work")
+    let task = try store.addDailyTask(groupID: group.id, title: "Keep this task")
+    let orphanGroupID = UUID()
+    try executeSQLite(url: url, sql: "UPDATE daily_tasks SET group_id = '\(orphanGroupID.uuidString)' WHERE id = '\(task.id.uuidString)';")
+
+    var caughtError: Error?
+    do {
+        _ = try store.toggleTask(id: task.id)
+    } catch {
+        caughtError = error
+    }
+
+    try expect(caughtError != nil, "toggle should reject task whose parent group is missing")
+    try expect(caughtError?.localizedDescription.contains("daily task group") == true, "orphan task toggle error names missing parent")
+    try expectEqual(try executeSQLiteScalar(url: url, sql: "SELECT is_completed FROM daily_tasks WHERE id = '\(task.id.uuidString)';"), "0", "orphan task remains unchanged")
+    let plan = try store.loadDailyPlan()
+    try expectEqual(plan.groups[0].tasks.count, 0, "orphan task remains hidden from current plan")
+}
+
 func testPlanStoreEditsDeletesAndReordersDailyPlan() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -1017,6 +1039,7 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store skips corrupt daily rows while keeping good data", testPlanStoreSkipsCorruptDailyRowsWhileKeepingGoodData),
     ("plan store recovers corrupt current plan id", testPlanStoreRecoversCorruptCurrentPlanID),
     ("plan store skips tasks with corrupt group id when toggling", testPlanStoreSkipsTasksWithCorruptGroupIDWhenToggling),
+    ("plan store rejects orphan daily task toggle", testPlanStoreRejectsOrphanDailyTaskToggle),
     ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
     ("plan store rejects reorder of missing daily group without changing order", testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder),
     ("plan store rejects missing daily rename and delete operations", testPlanStoreRejectsMissingDailyRenameAndDeleteOperations),
