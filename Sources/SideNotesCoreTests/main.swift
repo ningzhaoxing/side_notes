@@ -784,6 +784,28 @@ func testPlanStoreRejectsOrphanDailyTaskToggle() throws {
     try expectEqual(plan.groups[0].tasks.count, 0, "orphan task remains hidden from current plan")
 }
 
+func testPlanStoreRejectsOrphanDailyTaskMove() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let group = try store.addDailyGroup(title: "Work")
+    let task = try store.addDailyTask(groupID: group.id, title: "Keep this task")
+    let orphanGroupID = UUID()
+    try executeSQLite(url: url, sql: "UPDATE daily_tasks SET group_id = '\(orphanGroupID.uuidString)', sort_order = 7 WHERE id = '\(task.id.uuidString)';")
+
+    var caughtError: Error?
+    do {
+        try store.moveDailyTask(id: task.id, toSortOrder: 0)
+    } catch {
+        caughtError = error
+    }
+
+    try expect(caughtError != nil, "move should reject task whose parent group is missing")
+    try expect(caughtError?.localizedDescription.contains("daily task group") == true, "orphan task move error names missing parent")
+    try expectEqual(try executeSQLiteScalar(url: url, sql: "SELECT sort_order FROM daily_tasks WHERE id = '\(task.id.uuidString)';"), "7", "orphan task sort order remains unchanged")
+    let plan = try store.loadDailyPlan()
+    try expectEqual(plan.groups[0].tasks.count, 0, "orphan task remains hidden after rejected move")
+}
+
 func testPlanStoreEditsDeletesAndReordersDailyPlan() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -946,6 +968,28 @@ func testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder() thro
     try expectEqual(areas.map { $0.sortOrder }, [0, 1], "long-term area sort orders unchanged after missing reorder")
 }
 
+func testPlanStoreRejectsOrphanLongTermItemMove() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let area = try store.addLongTermArea(title: "Reading")
+    let item = try store.addLongTermItem(areaID: area.id, title: "Read")
+    let orphanAreaID = UUID()
+    try executeSQLite(url: url, sql: "UPDATE long_term_items SET area_id = '\(orphanAreaID.uuidString)', sort_order = 5 WHERE id = '\(item.id.uuidString)';")
+
+    var caughtError: Error?
+    do {
+        try store.moveLongTermItem(id: item.id, toSortOrder: 0)
+    } catch {
+        caughtError = error
+    }
+
+    try expect(caughtError != nil, "move should reject item whose parent area is missing")
+    try expect(caughtError?.localizedDescription.contains("long-term item area") == true, "orphan long-term item move error names missing parent")
+    try expectEqual(try executeSQLiteScalar(url: url, sql: "SELECT sort_order FROM long_term_items WHERE id = '\(item.id.uuidString)';"), "5", "orphan long-term item sort order remains unchanged")
+    let areas = try store.loadLongTermAreas()
+    try expectEqual(areas[0].items.count, 0, "orphan long-term item remains hidden after rejected move")
+}
+
 func testPlanStoreRejectsMissingLongTermRenameAndDeleteOperations() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -1040,6 +1084,7 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store recovers corrupt current plan id", testPlanStoreRecoversCorruptCurrentPlanID),
     ("plan store skips tasks with corrupt group id when toggling", testPlanStoreSkipsTasksWithCorruptGroupIDWhenToggling),
     ("plan store rejects orphan daily task toggle", testPlanStoreRejectsOrphanDailyTaskToggle),
+    ("plan store rejects orphan daily task move", testPlanStoreRejectsOrphanDailyTaskMove),
     ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
     ("plan store rejects reorder of missing daily group without changing order", testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder),
     ("plan store rejects missing daily rename and delete operations", testPlanStoreRejectsMissingDailyRenameAndDeleteOperations),
@@ -1047,6 +1092,7 @@ let tests: [(String, () throws -> Void)] = [
     ("store errors expose readable localized descriptions", testStoreErrorsExposeReadableLocalizedDescriptions),
     ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas),
     ("plan store rejects reorder of missing long-term area without changing order", testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder),
+    ("plan store rejects orphan long-term item move", testPlanStoreRejectsOrphanLongTermItemMove),
     ("plan store rejects missing long-term rename and delete operations", testPlanStoreRejectsMissingLongTermRenameAndDeleteOperations),
     ("plan store skips corrupt long-term rows while keeping good data", testPlanStoreSkipsCorruptLongTermRowsWhileKeepingGoodData)
 ]

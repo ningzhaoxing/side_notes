@@ -170,6 +170,7 @@ public final class PlanStore {
             guard let groupID = groupRows.first else {
                 throw SQLiteStoreError.missingValue("daily task group")
             }
+            try ensureRowExists(table: "daily_groups", id: UUID.from(groupID), description: "daily task group")
             try reorder(table: "daily_tasks", id: id, toSortOrder: sortOrder, ownerColumn: "group_id", ownerValue: groupID)
             try touchDailyPlan()
         }
@@ -371,6 +372,7 @@ public final class PlanStore {
             guard let areaID = areaRows.first else {
                 throw SQLiteStoreError.missingValue("long-term item area")
             }
+            try ensureRowExists(table: "long_term_areas", id: UUID.from(areaID), description: "long-term item area")
             try reorder(table: "long_term_items", id: id, toSortOrder: sortOrder, ownerColumn: "area_id", ownerValue: areaID)
         }
     }
