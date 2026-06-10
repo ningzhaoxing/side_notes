@@ -7,9 +7,7 @@ struct PlanCardView: View {
     var onEdit: () -> Void
     var onSettings: () -> Void
     var onQuit: () -> Void
-    var onResize: (CGSize) -> Void
     @State private var isArchiveConfirmationPresented = false
-    @State private var resizeStartSize: CGSize?
     @State private var newGroupTitle = ""
     @State private var newAreaTitle = ""
 
@@ -34,9 +32,6 @@ struct PlanCardView: View {
                 }
             }
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: viewModel.settings.visibleSide)
-        }
-        .overlay(alignment: .bottomTrailing) {
-            resizeHandle
         }
         .frame(width: viewModel.settings.cardFrame.width, height: viewModel.settings.cardFrame.height)
         .background(.regularMaterial)
@@ -136,35 +131,6 @@ struct PlanCardView: View {
         .disabled(isDisabled)
         .help(label)
         .accessibilityLabel(label)
-    }
-
-    private var resizeHandle: some View {
-        Image(systemName: "arrow.down.right.and.arrow.up.left")
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .frame(width: 28, height: 28)
-            .contentShape(Rectangle())
-            .padding(6)
-            .gesture(
-                DragGesture(minimumDistance: 2)
-                    .onChanged { value in
-                        let start = resizeStartSize ?? CGSize(
-                            width: viewModel.settings.cardFrame.width,
-                            height: viewModel.settings.cardFrame.height
-                        )
-                        if resizeStartSize == nil {
-                            resizeStartSize = start
-                        }
-                        onResize(CGSize(
-                            width: start.width + value.translation.width,
-                            height: start.height + value.translation.height
-                        ))
-                    }
-                    .onEnded { _ in
-                        resizeStartSize = nil
-                    }
-            )
-            .help("拖动调整卡片大小")
     }
 
     private var frontSide: some View {

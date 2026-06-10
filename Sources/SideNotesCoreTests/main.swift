@@ -437,7 +437,7 @@ func testPlanCardWindowShowAndBookmarkAreIdempotent() throws {
 func testExpandedCardGetsAutoHideGraceAfterBookmarkReveal() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
     let show = try sourceSection(source, from: "func show(revealedFromBookmark", to: "func hide()")
-    let shouldAutoHide = try sourceSection(source, from: "func shouldAutoHide", to: "func resizeCard")
+    let shouldAutoHide = try sourceSection(source, from: "func shouldAutoHide", to: "func updateForSettingsChange")
     let installBookmarkView = try sourceSection(source, from: "private func installBookmarkView", to: "private func cardPresentationFrame")
 
     try expect(source.contains("autoHideGraceUntil"), "card controller should track a grace period after revealing from the side handle")
@@ -521,6 +521,37 @@ func testPlanCardShowsSecondPrecisionProminentClock() throws {
     try expect(clock.contains("weight: .semibold"), "clock should use a more prominent weight")
     try expect(clock.contains("Color.accentColor.opacity"), "clock should have a subtle accent background")
     try expect(controls.contains("cardClock"), "toolbar should include the prominent second-precision clock")
+}
+
+func testPlanCardUsesTransparentResizableWindowHost() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let initSection = try sourceSection(source, from: "init(viewModel:", to: "func show(revealedFromBookmark")
+    let installRootView = try sourceSection(source, from: "private func installRootView", to: "private func installBookmarkView")
+    let transparentHostingView = try sourceSection(source, from: "private final class TransparentHostingView", to: "private final class CardWindow")
+
+    try expect(initSection.contains("styleMask: [.borderless, .resizable]"), "expanded card window should use the native resizable window style")
+    try expect(source.contains("private final class TransparentHostingView"), "card window should use an explicit transparent hosting view")
+    try expect(installRootView.contains("TransparentHostingView"), "expanded card should install the transparent host, not a default rectangular host")
+    try expect(installRootView.contains("window.styleMask.insert(.resizable)"), "expanded card should enable native edge resizing")
+    try expect(installRootView.contains("window.minSize = NSSize(width: 260, height: 360)"), "native resize should keep the existing minimum card size")
+    try expect(installRootView.contains("window.maxSize = NSSize(width: 720, height: 900)"), "native resize should keep the existing maximum card size")
+    try expect(transparentHostingView.contains("override var isOpaque: Bool { false }"), "hosting view should not paint rectangular opaque corners")
+    try expect(transparentHostingView.contains("NSColor.clear.cgColor"), "hosting layer should use a clear background")
+    try expect(transparentHostingView.contains("layer?.isOpaque = false"), "hosting layer should be explicitly non-opaque")
+}
+
+func testPlanCardUsesNativeEdgeResizeInsteadOfCornerHandle() throws {
+    let cardSource = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
+    let controllerSource = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let installBookmarkView = try sourceSection(controllerSource, from: "private func installBookmarkView", to: "private func cardPresentationFrame")
+
+    try expect(!cardSource.contains("resizeHandle"), "card should not draw a separate corner resize handle")
+    try expect(!cardSource.contains("arrow.down.right.and.arrow.up.left"), "card should not show a resize glyph in the bottom corner")
+    try expect(!cardSource.contains("DragGesture(minimumDistance: 2)"), "card should not implement resizing with a SwiftUI drag handle")
+    try expect(!cardSource.contains("onResize"), "card view should not own resize callbacks")
+    try expect(!controllerSource.contains("func resizeCard(to size:"), "card controller should not use the old corner-handle resize path")
+    try expect(controllerSource.contains("windowDidResize"), "native window resizing should still persist the card frame")
+    try expect(installBookmarkView.contains("window.styleMask.remove(.resizable)"), "collapsed bookmark should not expose native resize edges")
 }
 
 func testPlanCardDeletesUseFragmentingTransition() throws {
@@ -669,12 +700,14 @@ func testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges() throws {
     try expect(updateForSettingsChange.contains("applyFrame(edgeFrame(), animate: false)"), "expanded unpinned card should move to the newly selected edge")
 }
 
-func testPinnedCardResizePreservesCustomPosition() throws {
+func testNativeCardResizePersistsWindowFrame() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
-    let resizedFrame = try sourceSection(source, from: "private func resizedFrame()", to: "private func bookmarkFrame()")
+    let persistCardFrame = try sourceSection(source, from: "private func persistCardFrameIfNeeded", to: "private var isTextEditing")
+    let windowDidResize = try sourceSection(source, from: "nonisolated func windowDidResize", to: "private final class TransparentHostingView")
 
-    try expect(resizedFrame.contains("if !viewModel.settings.isPinned"), "pinned card resize should preserve the user's custom x position")
-    try expect(resizedFrame.contains("frame.origin.x = frame.maxX - width"), "unpinned right-edge card resize should still preserve its edge anchor")
+    try expect(!source.contains("private func resizedFrame()"), "native edge resize should not use the old custom resize frame calculation")
+    try expect(windowDidResize.contains("persistCardFrameIfNeeded()"), "native window resizing should persist the resulting window frame")
+    try expect(persistCardFrame.contains("viewModel.setCardFrame(window.frame.storedRect"), "persisted resize should store the full native window frame")
 }
 
 func testCardWindowVisibilityUsesUsableVisibleArea() throws {
@@ -1318,6 +1351,8 @@ let tests: [(String, () throws -> Void)] = [
     ("auto hide delay is one point five seconds", testAutoHideDelayIsOnePointFiveSeconds),
     ("bookmark is compact icon only", testBookmarkIsCompactIconOnly),
     ("plan card shows second precision prominent clock", testPlanCardShowsSecondPrecisionProminentClock),
+    ("plan card uses transparent resizable window host", testPlanCardUsesTransparentResizableWindowHost),
+    ("plan card uses native edge resize instead of corner handle", testPlanCardUsesNativeEdgeResizeInsteadOfCornerHandle),
     ("plan card deletes use fragmenting transition", testPlanCardDeletesUseFragmentingTransition),
     ("explicit show card uses manual reveal grace", testExplicitShowCardUsesManualRevealGrace),
     ("duplicate launch uses persistent show request fallback", testDuplicateLaunchUsesPersistentShowRequestFallback),
@@ -1328,7 +1363,7 @@ let tests: [(String, () throws -> Void)] = [
     ("view model skips unchanged renames", testViewModelSkipsUnchangedRenames),
     ("trigger side setting is editable and applied live", testTriggerSideSettingIsEditableAndAppliedLive),
     ("expanded unpinned card repositions only when trigger side changes", testExpandedUnpinnedCardRepositionsOnlyWhenTriggerSideChanges),
-    ("pinned card resize preserves custom position", testPinnedCardResizePreservesCustomPosition),
+    ("native card resize persists window frame", testNativeCardResizePersistsWindowFrame),
     ("card window visibility uses usable visible area", testCardWindowVisibilityUsesUsableVisibleArea),
     ("pinned card fallback frame is persisted", testPinnedCardFallbackFrameIsPersisted),
     ("editor window restore uses usable visibility and persists fallback", testEditorWindowRestoreUsesUsableVisibilityAndPersistsFallback),

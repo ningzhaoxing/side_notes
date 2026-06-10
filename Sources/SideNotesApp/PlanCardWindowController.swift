@@ -20,7 +20,7 @@ final class PlanCardWindowController: NSObject {
         self.viewModel = viewModel
         window = CardWindow(
             contentRect: viewModel.settings.cardFrame.nsRect,
-            styleMask: [.borderless],
+            styleMask: [.borderless, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -91,13 +91,6 @@ final class PlanCardWindowController: NSObject {
         return true
     }
 
-    func resizeCard(to size: CGSize) {
-        let frame = StoredRect(x: window.frame.minX, y: window.frame.minY, width: size.width, height: size.height)
-        viewModel.setCardFrame(frame, visibleFrames: NSScreen.storedVisibleFrames)
-        installRootView()
-        applyFrame(resizedFrame(), animate: false)
-    }
-
     func updateForSettingsChange(repositionForTriggerSideChange: Bool = false) {
         window.level = viewModel.settings.isPinned ? .floating : .normal
         if isCollapsed {
@@ -128,7 +121,10 @@ final class PlanCardWindowController: NSObject {
     }
 
     private func installRootView() {
-        window.contentView = NSHostingView(
+        window.styleMask.insert(.resizable)
+        window.minSize = NSSize(width: 260, height: 360)
+        window.maxSize = NSSize(width: 720, height: 900)
+        window.contentView = TransparentHostingView(
             rootView: PlanCardView(
                 viewModel: viewModel,
                 onPinToggle: { [weak self] isPinned in
@@ -142,15 +138,15 @@ final class PlanCardWindowController: NSObject {
                 },
                 onQuit: { [weak self] in
                     self?.onQuit?()
-                },
-                onResize: { [weak self] size in
-                    self?.resizeCard(to: size)
                 }
             )
         )
     }
 
     private func installBookmarkView() {
+        window.styleMask.remove(.resizable)
+        window.minSize = NSSize(width: 24, height: 56)
+        window.maxSize = NSSize(width: 24, height: 56)
         window.contentView = DrawerHandleButton(
             frame: NSRect(x: 0, y: 0, width: 24, height: 56),
             onActivate: { [weak self] in
@@ -191,22 +187,6 @@ final class PlanCardWindowController: NSObject {
         }
         let y = frame.minY + max(24, (frame.height - height) / 2)
         return NSRect(x: x, y: y, width: width, height: height)
-    }
-
-    private func resizedFrame() -> NSRect {
-        let width = viewModel.settings.cardFrame.width
-        let height = viewModel.settings.cardFrame.height
-        var frame = window.frame
-        if !viewModel.settings.isPinned {
-            switch viewModel.settings.triggerSide {
-            case .right:
-                frame.origin.x = frame.maxX - width
-            case .left:
-                break
-            }
-        }
-        frame.size = NSSize(width: width, height: height)
-        return frame
     }
 
     private func bookmarkFrame() -> NSRect {
@@ -262,6 +242,17 @@ extension PlanCardWindowController: NSWindowDelegate {
         Task { @MainActor in
             persistCardFrameIfNeeded()
         }
+    }
+}
+
+private final class TransparentHostingView<Content: View>: NSHostingView<Content> {
+    override var isOpaque: Bool { false }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+        layer?.isOpaque = false
     }
 }
 
