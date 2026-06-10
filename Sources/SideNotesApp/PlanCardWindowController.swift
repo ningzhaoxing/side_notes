@@ -151,11 +151,18 @@ final class PlanCardWindowController: NSObject {
     }
 
     private func installBookmarkView() {
-        window.contentView = DrawerHandleButton(frame: NSRect(x: 0, y: 0, width: 38, height: 112), onActivate: { [weak self] in
-            self?.show(revealedFromBookmark: true)
-        }, onQuit: { [weak self] in
-            self?.onQuit?()
-        })
+        window.contentView = DrawerHandleButton(
+            frame: NSRect(x: 0, y: 0, width: 38, height: 112),
+            onActivate: { [weak self] in
+                self?.show(revealedFromBookmark: true)
+            },
+            onHover: { [weak self] in
+                self?.show()
+            },
+            onQuit: { [weak self] in
+                self?.onQuit?()
+            }
+        )
     }
 
     private func cardPresentationFrame() -> NSRect {
@@ -265,11 +272,13 @@ private final class CardWindow: NSWindow {
 
 private final class DrawerHandleButton: NSButton {
     private let onActivate: () -> Void
+    private let onHover: () -> Void
     private let onQuit: () -> Void
     private var trackingArea: NSTrackingArea?
 
-    init(frame: NSRect, onActivate: @escaping () -> Void, onQuit: @escaping () -> Void) {
+    init(frame: NSRect, onActivate: @escaping () -> Void, onHover: @escaping () -> Void, onQuit: @escaping () -> Void) {
         self.onActivate = onActivate
+        self.onHover = onHover
         self.onQuit = onQuit
         super.init(frame: frame)
         wantsLayer = true
@@ -334,7 +343,7 @@ private final class DrawerHandleButton: NSButton {
     }
 
     override func mouseEntered(with event: NSEvent) {
-        onActivate()
+        onHover()
     }
 
     override func draw(_ dirtyRect: NSRect) {

@@ -460,6 +460,23 @@ func testExpandedCardGetsAutoHideGraceAfterBookmarkReveal() throws {
     try expect(installBookmarkView.contains("show(revealedFromBookmark: true)"), "side handle should use the manual reveal path")
 }
 
+func testSideHandleHoverDoesNotUseManualRevealLatch() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let installBookmarkView = try sourceSection(source, from: "private func installBookmarkView", to: "private func cardPresentationFrame")
+    let hoverClosure = try sourceSection(installBookmarkView, from: "onHover:", to: "onQuit:")
+    let drawerHandle = try sourceSection(source, from: "private final class DrawerHandleButton", to: "private func drawCentered")
+    let mouseEntered = try sourceSection(source, from: "override func mouseEntered", to: "override func draw")
+
+    try expect(installBookmarkView.contains("onActivate:"), "side handle should keep a separate click activation path")
+    try expect(installBookmarkView.contains("onHover:"), "side handle hover should have a separate lightweight reveal path")
+    try expect(installBookmarkView.contains("show(revealedFromBookmark: true)"), "clicking the side handle should still give the user a manual reveal grace period")
+    try expect(hoverClosure.contains("self?.show()"), "hovering the side handle should reveal without the manual latch")
+    try expect(!hoverClosure.contains("revealedFromBookmark"), "hovering the side handle should not start the manual reveal grace period")
+    try expect(drawerHandle.contains("private let onHover: () -> Void"), "drawer handle should store the hover reveal action separately")
+    try expect(mouseEntered.contains("onHover()"), "mouse hover should use the hover reveal action")
+    try expect(!mouseEntered.contains("onActivate()"), "mouse hover should not use the manual click reveal action")
+}
+
 func testRenameInputsRevertAfterFailedSave() throws {
     let viewModelSource = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
     let cardSource = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
@@ -1185,6 +1202,7 @@ let tests: [(String, () throws -> Void)] = [
     ("add inputs clear only after successful save", testAddInputsClearOnlyAfterSuccessfulSave),
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
     ("expanded card gets auto-hide grace after bookmark reveal", testExpandedCardGetsAutoHideGraceAfterBookmarkReveal),
+    ("side handle hover does not use manual reveal latch", testSideHandleHoverDoesNotUseManualRevealLatch),
     ("rename inputs revert after failed save", testRenameInputsRevertAfterFailedSave),
     ("editor rename fields save on focus loss", testEditorRenameFieldsSaveOnFocusLoss),
     ("view model skips unchanged renames", testViewModelSkipsUnchangedRenames),
