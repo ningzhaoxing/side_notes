@@ -477,6 +477,66 @@ func testSideHandleHoverDoesNotUseManualRevealLatch() throws {
     try expect(!mouseEntered.contains("onActivate()"), "mouse hover should not use the manual click reveal action")
 }
 
+func testOnlyBookmarkHoverRevealsCollapsedCard() throws {
+    let edgeTriggerSource = try readWorkspaceFile("Sources/SideNotesApp/EdgeTriggerController.swift")
+    let coordinatorSource = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
+    let edgeTriggerSetup = try sourceSection(coordinatorSource, from: "edgeTrigger = EdgeTriggerController", to: "edgeTrigger?.start()")
+
+    try expect(!edgeTriggerSource.contains("onShow"), "screen-edge polling should not reveal the card outside the bookmark window")
+    try expect(!edgeTriggerSource.contains("threshold"), "screen-edge threshold hover should not trigger reveals")
+    try expect(!edgeTriggerSetup.contains("onShow:"), "coordinator should not wire a full-edge hover reveal")
+    try expect(edgeTriggerSetup.contains("onHideCheck:"), "edge trigger should only keep auto-hide checks running")
+}
+
+func testAutoHideDelayIsOnePointFiveSeconds() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
+    let scheduleHide = try sourceSection(source, from: "private func scheduleHide", to: "private func cancelPendingHide")
+
+    try expect(scheduleHide.contains(".now() + 1.5"), "unpinned card should fold into the bookmark after 1.5 seconds away from the card")
+    try expect(!scheduleHide.contains(".now() + 2.0"), "old 2 second auto-hide delay should not remain")
+}
+
+func testBookmarkIsCompactIconOnly() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
+    let installBookmarkView = try sourceSection(source, from: "private func installBookmarkView", to: "private func cardPresentationFrame")
+    let bookmarkFrame = try sourceSection(source, from: "private func bookmarkFrame", to: "private func frameIsVisible")
+    let drawerHandle = try sourceSection(source, from: "private final class DrawerHandleButton", to: "private func drawCentered")
+    let draw = try sourceSection(source, from: "override func draw", to: "private func drawCentered")
+
+    try expect(installBookmarkView.contains("width: 24, height: 56"), "bookmark view should be about half the previous size")
+    try expect(bookmarkFrame.contains("let width: CGFloat = 24"), "bookmark window width should be compact")
+    try expect(bookmarkFrame.contains("let height: CGFloat = 56"), "bookmark window height should be compact")
+    try expect(!draw.contains("\"计划\""), "compact bookmark should not draw the plan label")
+    try expect(drawerHandle.contains("drawCentered(\"◆\", y: bounds.midY"), "compact bookmark should draw a single centered mark")
+}
+
+func testPlanCardShowsMinutePrecisionClock() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
+    let controls = try sourceSection(source, from: "private var controls", to: "private func toolbarButton")
+
+    try expect(source.contains("TimelineView(.periodic"), "card should refresh its clock automatically")
+    try expect(source.contains("yyyy-MM-dd HH:mm"), "clock should display year through minute")
+    try expect(controls.contains("minuteClock"), "toolbar should include the minute-precision clock")
+}
+
+func testPlanCardDeletesUseFragmentingTransition() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
+    let dailyGroup = try sourceSection(source, from: "private struct InlineDailyGroupView", to: "private struct InlineDailyTaskView")
+    let dailyTask = try sourceSection(source, from: "private struct InlineDailyTaskView", to: "private struct InlineLongTermAreaView")
+    let longTermArea = try sourceSection(source, from: "private struct InlineLongTermAreaView", to: "private struct InlineLongTermItemView")
+    let longTermItem = try sourceSection(source, from: "private struct InlineLongTermItemView", to: "private extension")
+    let transition = try sourceSection(source, from: "private extension AnyTransition", to: "private struct FragmentDeleteModifier")
+
+    try expect(source.contains("fragmentingDelete"), "plan card should define a reusable fragmenting delete transition")
+    try expect(transition.contains(".modifier(") && transition.contains("active: FragmentDeleteModifier"), "delete transition should use a custom active removal modifier")
+    try expect(source.contains(".blur(radius:"), "delete transition should include a soft shatter blur")
+    try expect(source.contains(".scaleEffect"), "delete transition should include a shrinking fragment effect")
+    try expect(dailyGroup.contains(".transition(.fragmentingDelete"), "daily groups should animate when deleted")
+    try expect(dailyTask.contains(".transition(.fragmentingDelete"), "daily tasks should animate when deleted")
+    try expect(longTermArea.contains(".transition(.fragmentingDelete"), "long-term areas should animate when deleted")
+    try expect(longTermItem.contains(".transition(.fragmentingDelete"), "long-term items should animate when deleted")
+}
+
 func testExplicitShowCardUsesManualRevealGrace() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
     let start = try sourceSection(source, from: "func start()", to: "func showCard()")
@@ -579,7 +639,6 @@ func testTriggerSideSettingIsEditableAndAppliedLive() throws {
     let viewModelSource = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
     let editorSource = try readWorkspaceFile("Sources/SideNotesApp/EditorView.swift")
     let coordinatorSource = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
-    let edgeTriggerSource = try readWorkspaceFile("Sources/SideNotesApp/EdgeTriggerController.swift")
     let cardControllerSource = try readWorkspaceFile("Sources/SideNotesApp/PlanCardWindowController.swift")
     let appearanceEditor = try sourceSection(editorSource, from: "private var appearanceEditor", to: "private struct DailyGroupEditor")
 
@@ -587,9 +646,8 @@ func testTriggerSideSettingIsEditableAndAppliedLive() throws {
     try expect(appearanceEditor.contains("Picker(\"侧边位置\""), "appearance editor should expose trigger side choice")
     try expect(appearanceEditor.contains("viewModel.setTriggerSide($0)"), "trigger side picker should save through view model")
     try expect(coordinatorSource.contains("settingsCancellable"), "coordinator should observe live settings changes")
-    try expect(coordinatorSource.contains("edgeTrigger?.setTriggerSide(settings.triggerSide)"), "coordinator should update edge trigger side live")
     try expect(coordinatorSource.contains("cardController.updateForSettingsChange"), "coordinator should let visible card or handle react to live setting changes")
-    try expect(edgeTriggerSource.contains("func setTriggerSide(_ triggerSide: TriggerSide)"), "edge trigger should allow live side updates")
+    try expect(!coordinatorSource.contains("edgeTrigger?.setTriggerSide(settings.triggerSide)"), "side changes should no longer enable full-edge hover reveals")
     try expect(cardControllerSource.contains("func updateForSettingsChange"), "card controller should reposition collapsed handle after settings changes")
 }
 
@@ -1252,6 +1310,11 @@ let tests: [(String, () throws -> Void)] = [
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
     ("expanded card gets auto-hide grace after bookmark reveal", testExpandedCardGetsAutoHideGraceAfterBookmarkReveal),
     ("side handle hover does not use manual reveal latch", testSideHandleHoverDoesNotUseManualRevealLatch),
+    ("only bookmark hover reveals collapsed card", testOnlyBookmarkHoverRevealsCollapsedCard),
+    ("auto hide delay is one point five seconds", testAutoHideDelayIsOnePointFiveSeconds),
+    ("bookmark is compact icon only", testBookmarkIsCompactIconOnly),
+    ("plan card shows minute precision clock", testPlanCardShowsMinutePrecisionClock),
+    ("plan card deletes use fragmenting transition", testPlanCardDeletesUseFragmentingTransition),
     ("explicit show card uses manual reveal grace", testExplicitShowCardUsesManualRevealGrace),
     ("duplicate launch uses persistent show request fallback", testDuplicateLaunchUsesPersistentShowRequestFallback),
     ("single instance check runs before application creation", testSingleInstanceCheckRunsBeforeApplicationCreation),

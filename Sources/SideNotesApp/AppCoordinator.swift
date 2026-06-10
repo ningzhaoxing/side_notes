@@ -77,11 +77,6 @@ final class AppCoordinator: NSObject {
         }
 
         edgeTrigger = EdgeTriggerController(
-            triggerSide: viewModel.settings.triggerSide,
-            onShow: { [weak self] in
-                self?.cancelPendingHide()
-                self?.cardController.show()
-            },
             onHideCheck: { [weak self] mouseLocation in
                 guard let self else { return }
                 if self.cardController.shouldAutoHide(mouseLocation: mouseLocation) {
@@ -178,7 +173,7 @@ final class AppCoordinator: NSObject {
             }
         }
         pendingHideWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: workItem)
     }
 
     private func cancelPendingHide() {
@@ -189,7 +184,6 @@ final class AppCoordinator: NSObject {
     private func applyLiveSettings(_ settings: AppSettings) {
         let triggerSideChanged = settings.triggerSide != lastAppliedSettings.triggerSide
         lastAppliedSettings = settings
-        edgeTrigger?.setTriggerSide(settings.triggerSide)
         cardController.updateForSettingsChange(repositionForTriggerSideChange: triggerSideChanged)
     }
 

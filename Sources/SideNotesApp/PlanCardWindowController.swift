@@ -152,7 +152,7 @@ final class PlanCardWindowController: NSObject {
 
     private func installBookmarkView() {
         window.contentView = DrawerHandleButton(
-            frame: NSRect(x: 0, y: 0, width: 38, height: 112),
+            frame: NSRect(x: 0, y: 0, width: 24, height: 56),
             onActivate: { [weak self] in
                 self?.show(revealedFromBookmark: true)
             },
@@ -213,8 +213,8 @@ final class PlanCardWindowController: NSObject {
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
         let frame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1_440, height: 900)
-        let width: CGFloat = 38
-        let height: CGFloat = 112
+        let width: CGFloat = 24
+        let height: CGFloat = 56
         let x: CGFloat
         switch viewModel.settings.triggerSide {
         case .right:
@@ -349,15 +349,14 @@ private final class DrawerHandleButton: NSButton {
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         let rect = bounds.insetBy(dx: 2, dy: 2)
-        let path = NSBezierPath(roundedRect: rect, xRadius: 13, yRadius: 13)
+        let path = NSBezierPath(roundedRect: rect, xRadius: 10, yRadius: 10)
         NSColor.windowBackgroundColor.withAlphaComponent(0.9).setFill()
         path.fill()
         NSColor.separatorColor.withAlphaComponent(0.8).setStroke()
         path.lineWidth = 1
         path.stroke()
 
-        drawCentered("◆", y: bounds.midY + 16, size: 13, weight: .semibold)
-        drawCentered("计划", y: bounds.midY - 14, size: 12, weight: .semibold)
+        drawCentered("◆", y: bounds.midY, size: 12, weight: .semibold)
     }
 
     private func drawCentered(_ text: String, y: CGFloat, size: CGFloat, weight: NSFont.Weight) {

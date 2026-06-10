@@ -13,6 +13,13 @@ struct PlanCardView: View {
     @State private var newGroupTitle = ""
     @State private var newAreaTitle = ""
 
+    private static let minuteFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter
+    }()
+
     var body: some View {
         VStack(spacing: 0) {
             controls
@@ -55,44 +62,56 @@ struct PlanCardView: View {
     }
 
     private var controls: some View {
-        HStack(spacing: 6) {
-            Text(viewModel.settings.visibleSide == .front ? "今天" : "长期")
-                .font(.headline)
-                .lineLimit(1)
-            Spacer(minLength: 8)
-            toolbarButton(
-                systemName: viewModel.settings.isPinned ? "pin.slash" : "pin",
-                label: viewModel.settings.isPinned ? "取消固定" : "固定"
-            ) {
-                let next = !viewModel.settings.isPinned
-                viewModel.setPinned(next)
-                onPinToggle(viewModel.settings.isPinned)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(viewModel.settings.visibleSide == .front ? "今天" : "长期")
+                    .font(.headline)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                toolbarButton(
+                    systemName: viewModel.settings.isPinned ? "pin.slash" : "pin",
+                    label: viewModel.settings.isPinned ? "取消固定" : "固定"
+                ) {
+                    let next = !viewModel.settings.isPinned
+                    viewModel.setPinned(next)
+                    onPinToggle(viewModel.settings.isPinned)
+                }
+                toolbarButton(systemName: "arrow.triangle.2.circlepath", label: "翻面") {
+                    viewModel.flipCard()
+                }
+                toolbarButton(systemName: "pencil", label: "编辑") {
+                    onEdit()
+                }
+                toolbarButton(systemName: "gearshape", label: "设置") {
+                    onSettings()
+                }
+                toolbarButton(systemName: "power", label: "退出") {
+                    onQuit()
+                }
+                toolbarButton(
+                    systemName: "archivebox",
+                    label: "归档",
+                    isDisabled: viewModel.dailyPlan.groups.isEmpty
+                ) {
+                    isArchiveConfirmationPresented = true
+                }
             }
-            toolbarButton(systemName: "arrow.triangle.2.circlepath", label: "翻面") {
-                viewModel.flipCard()
-            }
-            toolbarButton(systemName: "pencil", label: "编辑") {
-                onEdit()
-            }
-            toolbarButton(systemName: "gearshape", label: "设置") {
-                onSettings()
-            }
-            toolbarButton(systemName: "power", label: "退出") {
-                onQuit()
-            }
-            toolbarButton(
-                systemName: "archivebox",
-                label: "归档",
-                isDisabled: viewModel.dailyPlan.groups.isEmpty
-            ) {
-                isArchiveConfirmationPresented = true
-            }
+            minuteClock
         }
         .buttonStyle(.borderless)
         .font(.system(size: 12, weight: .medium))
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color.primary.opacity(0.055))
+    }
+
+    private var minuteClock: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { timeline in
+            Text(Self.minuteFormatter.string(from: timeline.date))
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
     }
 
     private func toolbarButton(
@@ -159,6 +178,7 @@ struct PlanCardView: View {
                 } else {
                     ForEach(viewModel.dailyPlan.groups.sorted { $0.sortOrder < $1.sortOrder }) { group in
                         InlineDailyGroupView(group: group, viewModel: viewModel)
+                            .transition(.fragmentingDelete)
                     }
                 }
 
@@ -169,6 +189,7 @@ struct PlanCardView: View {
                 }
             }
             .padding(18)
+            .animation(.spring(response: 0.28, dampingFraction: 0.82), value: viewModel.dailyPlan.groups.map(\.id))
         }
     }
 
@@ -190,6 +211,7 @@ struct PlanCardView: View {
                 } else {
                     ForEach(viewModel.longTermAreas.sorted { $0.sortOrder < $1.sortOrder }) { area in
                         InlineLongTermAreaView(area: area, viewModel: viewModel)
+                            .transition(.fragmentingDelete)
                     }
                 }
 
@@ -200,6 +222,7 @@ struct PlanCardView: View {
                 }
             }
             .padding(18)
+            .animation(.spring(response: 0.28, dampingFraction: 0.82), value: viewModel.longTermAreas.map(\.id))
         }
     }
 
@@ -273,6 +296,7 @@ private struct InlineDailyGroupView: View {
 
             ForEach(group.tasks.sorted { $0.sortOrder < $1.sortOrder }) { task in
                 InlineDailyTaskView(task: task, viewModel: viewModel)
+                    .transition(.fragmentingDelete)
             }
 
             InlineAddRow(
@@ -287,6 +311,7 @@ private struct InlineDailyGroupView: View {
         }
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(.spring(response: 0.26, dampingFraction: 0.8), value: group.tasks.map(\.id))
     }
 
     private func saveTitle() {
@@ -335,6 +360,7 @@ private struct InlineDailyTaskView: View {
             .help("删除任务")
             .accessibilityLabel("删除任务")
         }
+        .transition(.fragmentingDelete)
     }
 
     private func saveTitle() {
@@ -378,6 +404,7 @@ private struct InlineLongTermAreaView: View {
 
             ForEach(area.items.sorted { $0.sortOrder < $1.sortOrder }) { item in
                 InlineLongTermItemView(item: item, viewModel: viewModel)
+                    .transition(.fragmentingDelete)
             }
 
             InlineAddRow(
@@ -392,6 +419,7 @@ private struct InlineLongTermAreaView: View {
         }
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(.spring(response: 0.26, dampingFraction: 0.8), value: area.items.map(\.id))
     }
 
     private func saveTitle() {
@@ -433,11 +461,37 @@ private struct InlineLongTermItemView: View {
             .help("删除事项")
             .accessibilityLabel("删除事项")
         }
+        .transition(.fragmentingDelete)
     }
 
     private func saveTitle() {
         if !viewModel.renameLongTermItem(id: item.id, title: title) {
             title = item.title
         }
+    }
+}
+
+private extension AnyTransition {
+    static var fragmentingDelete: AnyTransition {
+        .asymmetric(
+            insertion: .opacity.combined(with: .scale(scale: 0.98, anchor: .leading)),
+            removal: .modifier(
+                active: FragmentDeleteModifier(progress: 1),
+                identity: FragmentDeleteModifier(progress: 0)
+            )
+        )
+    }
+}
+
+private struct FragmentDeleteModifier: ViewModifier {
+    let progress: Double
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(1 - progress)
+            .scaleEffect(1 - progress * 0.18, anchor: .leading)
+            .blur(radius: progress * 2.5)
+            .rotationEffect(.degrees(progress * -1.6), anchor: .leading)
+            .offset(x: progress * 18, y: progress * -2)
     }
 }
