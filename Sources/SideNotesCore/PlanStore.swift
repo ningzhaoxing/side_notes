@@ -151,6 +151,7 @@ public final class PlanStore {
     public func renameDailyTask(id: UUID, title: String) throws {
         try database.transaction {
             try ensureRowExists(table: "daily_tasks", id: id, description: "daily task")
+            try ensureDailyTaskParentExists(id: id)
             try database.execute(
                 "UPDATE daily_tasks SET title = ?, updated_at = ? WHERE id = ?",
                 [.text(title), .double(Date().timeIntervalSince1970), .text(id.uuidString)]
@@ -179,6 +180,7 @@ public final class PlanStore {
     public func deleteDailyTask(id: UUID) throws {
         try database.transaction {
             try ensureRowExists(table: "daily_tasks", id: id, description: "daily task")
+            try ensureDailyTaskParentExists(id: id)
             try database.execute(
                 "DELETE FROM daily_tasks WHERE id = ?",
                 [.text(id.uuidString)]
@@ -354,6 +356,7 @@ public final class PlanStore {
     public func renameLongTermItem(id: UUID, title: String) throws {
         try database.transaction {
             try ensureRowExists(table: "long_term_items", id: id, description: "long-term item")
+            try ensureLongTermItemParentExists(id: id)
             try database.execute(
                 "UPDATE long_term_items SET title = ?, updated_at = ? WHERE id = ?",
                 [.text(title), .double(Date().timeIntervalSince1970), .text(id.uuidString)]
@@ -380,6 +383,7 @@ public final class PlanStore {
     public func deleteLongTermItem(id: UUID) throws {
         try database.transaction {
             try ensureRowExists(table: "long_term_items", id: id, description: "long-term item")
+            try ensureLongTermItemParentExists(id: id)
             try database.execute(
                 "DELETE FROM long_term_items WHERE id = ?",
                 [.text(id.uuidString)]
@@ -792,6 +796,32 @@ public final class PlanStore {
         guard count > 0 else {
             throw SQLiteStoreError.missingValue("\(description) \(id)")
         }
+    }
+
+    private func ensureDailyTaskParentExists(id: UUID) throws {
+        let rows = try database.query(
+            "SELECT group_id FROM daily_tasks WHERE id = ?",
+            [.text(id.uuidString)]
+        ) { statement in
+            try sqliteText(statement, 0)
+        }
+        guard let groupID = rows.first else {
+            throw SQLiteStoreError.missingValue("daily task \(id)")
+        }
+        try ensureRowExists(table: "daily_groups", id: UUID.from(groupID), description: "daily task group")
+    }
+
+    private func ensureLongTermItemParentExists(id: UUID) throws {
+        let rows = try database.query(
+            "SELECT area_id FROM long_term_items WHERE id = ?",
+            [.text(id.uuidString)]
+        ) { statement in
+            try sqliteText(statement, 0)
+        }
+        guard let areaID = rows.first else {
+            throw SQLiteStoreError.missingValue("long-term item \(id)")
+        }
+        try ensureRowExists(table: "long_term_areas", id: UUID.from(areaID), description: "long-term item area")
     }
 
     private func touchDailyPlan() throws {

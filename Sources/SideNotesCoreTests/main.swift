@@ -806,6 +806,46 @@ func testPlanStoreRejectsOrphanDailyTaskMove() throws {
     try expectEqual(plan.groups[0].tasks.count, 0, "orphan task remains hidden after rejected move")
 }
 
+func testPlanStoreRejectsOrphanDailyTaskRename() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let group = try store.addDailyGroup(title: "Work")
+    let task = try store.addDailyTask(groupID: group.id, title: "Keep this task")
+    let orphanGroupID = UUID()
+    try executeSQLite(url: url, sql: "UPDATE daily_tasks SET group_id = '\(orphanGroupID.uuidString)' WHERE id = '\(task.id.uuidString)';")
+
+    var caughtError: Error?
+    do {
+        try store.renameDailyTask(id: task.id, title: "Changed")
+    } catch {
+        caughtError = error
+    }
+
+    try expect(caughtError != nil, "rename should reject task whose parent group is missing")
+    try expect(caughtError?.localizedDescription.contains("daily task group") == true, "orphan task rename error names missing parent")
+    try expectEqual(try executeSQLiteScalar(url: url, sql: "SELECT title FROM daily_tasks WHERE id = '\(task.id.uuidString)';"), "Keep this task", "orphan task title remains unchanged")
+}
+
+func testPlanStoreRejectsOrphanDailyTaskDelete() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let group = try store.addDailyGroup(title: "Work")
+    let task = try store.addDailyTask(groupID: group.id, title: "Keep this task")
+    let orphanGroupID = UUID()
+    try executeSQLite(url: url, sql: "UPDATE daily_tasks SET group_id = '\(orphanGroupID.uuidString)' WHERE id = '\(task.id.uuidString)';")
+
+    var caughtError: Error?
+    do {
+        try store.deleteDailyTask(id: task.id)
+    } catch {
+        caughtError = error
+    }
+
+    try expect(caughtError != nil, "delete should reject task whose parent group is missing")
+    try expect(caughtError?.localizedDescription.contains("daily task group") == true, "orphan task delete error names missing parent")
+    try expectEqual(try executeSQLiteScalar(url: url, sql: "SELECT COUNT(*) FROM daily_tasks WHERE id = '\(task.id.uuidString)';"), "1", "orphan task row remains after rejected delete")
+}
+
 func testPlanStoreEditsDeletesAndReordersDailyPlan() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -990,6 +1030,46 @@ func testPlanStoreRejectsOrphanLongTermItemMove() throws {
     try expectEqual(areas[0].items.count, 0, "orphan long-term item remains hidden after rejected move")
 }
 
+func testPlanStoreRejectsOrphanLongTermItemRename() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let area = try store.addLongTermArea(title: "Reading")
+    let item = try store.addLongTermItem(areaID: area.id, title: "Read")
+    let orphanAreaID = UUID()
+    try executeSQLite(url: url, sql: "UPDATE long_term_items SET area_id = '\(orphanAreaID.uuidString)' WHERE id = '\(item.id.uuidString)';")
+
+    var caughtError: Error?
+    do {
+        try store.renameLongTermItem(id: item.id, title: "Changed")
+    } catch {
+        caughtError = error
+    }
+
+    try expect(caughtError != nil, "rename should reject item whose parent area is missing")
+    try expect(caughtError?.localizedDescription.contains("long-term item area") == true, "orphan long-term item rename error names missing parent")
+    try expectEqual(try executeSQLiteScalar(url: url, sql: "SELECT title FROM long_term_items WHERE id = '\(item.id.uuidString)';"), "Read", "orphan long-term item title remains unchanged")
+}
+
+func testPlanStoreRejectsOrphanLongTermItemDelete() throws {
+    let url = try temporaryDatabaseURL("store.sqlite")
+    let store = try PlanStore(databaseURL: url)
+    let area = try store.addLongTermArea(title: "Reading")
+    let item = try store.addLongTermItem(areaID: area.id, title: "Read")
+    let orphanAreaID = UUID()
+    try executeSQLite(url: url, sql: "UPDATE long_term_items SET area_id = '\(orphanAreaID.uuidString)' WHERE id = '\(item.id.uuidString)';")
+
+    var caughtError: Error?
+    do {
+        try store.deleteLongTermItem(id: item.id)
+    } catch {
+        caughtError = error
+    }
+
+    try expect(caughtError != nil, "delete should reject item whose parent area is missing")
+    try expect(caughtError?.localizedDescription.contains("long-term item area") == true, "orphan long-term item delete error names missing parent")
+    try expectEqual(try executeSQLiteScalar(url: url, sql: "SELECT COUNT(*) FROM long_term_items WHERE id = '\(item.id.uuidString)';"), "1", "orphan long-term item row remains after rejected delete")
+}
+
 func testPlanStoreRejectsMissingLongTermRenameAndDeleteOperations() throws {
     let url = try temporaryDatabaseURL("store.sqlite")
     let store = try PlanStore(databaseURL: url)
@@ -1085,6 +1165,8 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store skips tasks with corrupt group id when toggling", testPlanStoreSkipsTasksWithCorruptGroupIDWhenToggling),
     ("plan store rejects orphan daily task toggle", testPlanStoreRejectsOrphanDailyTaskToggle),
     ("plan store rejects orphan daily task move", testPlanStoreRejectsOrphanDailyTaskMove),
+    ("plan store rejects orphan daily task rename", testPlanStoreRejectsOrphanDailyTaskRename),
+    ("plan store rejects orphan daily task delete", testPlanStoreRejectsOrphanDailyTaskDelete),
     ("plan store edits, deletes, and reorders daily plan", testPlanStoreEditsDeletesAndReordersDailyPlan),
     ("plan store rejects reorder of missing daily group without changing order", testPlanStoreRejectsReorderOfMissingDailyGroupWithoutChangingOrder),
     ("plan store rejects missing daily rename and delete operations", testPlanStoreRejectsMissingDailyRenameAndDeleteOperations),
@@ -1093,6 +1175,8 @@ let tests: [(String, () throws -> Void)] = [
     ("plan store edits, deletes, and reorders long-term areas", testPlanStoreEditsDeletesAndReordersLongTermAreas),
     ("plan store rejects reorder of missing long-term area without changing order", testPlanStoreRejectsReorderOfMissingLongTermAreaWithoutChangingOrder),
     ("plan store rejects orphan long-term item move", testPlanStoreRejectsOrphanLongTermItemMove),
+    ("plan store rejects orphan long-term item rename", testPlanStoreRejectsOrphanLongTermItemRename),
+    ("plan store rejects orphan long-term item delete", testPlanStoreRejectsOrphanLongTermItemDelete),
     ("plan store rejects missing long-term rename and delete operations", testPlanStoreRejectsMissingLongTermRenameAndDeleteOperations),
     ("plan store skips corrupt long-term rows while keeping good data", testPlanStoreSkipsCorruptLongTermRowsWhileKeepingGoodData)
 ]
