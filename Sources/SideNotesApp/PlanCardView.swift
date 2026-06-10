@@ -13,10 +13,10 @@ struct PlanCardView: View {
     @State private var newGroupTitle = ""
     @State private var newAreaTitle = ""
 
-    private static let minuteFormatter: DateFormatter = {
+    private static let clockFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return formatter
     }()
 
@@ -96,7 +96,7 @@ struct PlanCardView: View {
                     isArchiveConfirmationPresented = true
                 }
             }
-            minuteClock
+            cardClock
         }
         .buttonStyle(.borderless)
         .font(.system(size: 12, weight: .medium))
@@ -105,12 +105,19 @@ struct PlanCardView: View {
         .background(Color.primary.opacity(0.055))
     }
 
-    private var minuteClock: some View {
-        TimelineView(.periodic(from: .now, by: 60)) { timeline in
-            Text(Self.minuteFormatter.string(from: timeline.date))
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+    private var cardClock: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { timeline in
+            HStack(spacing: 5) {
+                Image(systemName: "clock")
+                    .font(.system(size: 10, weight: .semibold))
+                Text(Self.clockFormatter.string(from: timeline.date))
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.accentColor.opacity(0.16), in: Capsule())
         }
     }
 

@@ -510,13 +510,17 @@ func testBookmarkIsCompactIconOnly() throws {
     try expect(drawerHandle.contains("drawCentered(\"◆\", y: bounds.midY"), "compact bookmark should draw a single centered mark")
 }
 
-func testPlanCardShowsMinutePrecisionClock() throws {
+func testPlanCardShowsSecondPrecisionProminentClock() throws {
     let source = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
     let controls = try sourceSection(source, from: "private var controls", to: "private func toolbarButton")
+    let clock = try sourceSection(source, from: "private var cardClock", to: "private func toolbarButton")
 
-    try expect(source.contains("TimelineView(.periodic"), "card should refresh its clock automatically")
-    try expect(source.contains("yyyy-MM-dd HH:mm"), "clock should display year through minute")
-    try expect(controls.contains("minuteClock"), "toolbar should include the minute-precision clock")
+    try expect(source.contains("yyyy-MM-dd HH:mm:ss"), "clock should display year through seconds")
+    try expect(clock.contains("TimelineView(.periodic(from: .now, by: 1))"), "card clock should refresh every second")
+    try expect(clock.contains("Image(systemName: \"clock\")"), "clock should have a visible clock icon")
+    try expect(clock.contains("weight: .semibold"), "clock should use a more prominent weight")
+    try expect(clock.contains("Color.accentColor.opacity"), "clock should have a subtle accent background")
+    try expect(controls.contains("cardClock"), "toolbar should include the prominent second-precision clock")
 }
 
 func testPlanCardDeletesUseFragmentingTransition() throws {
@@ -1313,7 +1317,7 @@ let tests: [(String, () throws -> Void)] = [
     ("only bookmark hover reveals collapsed card", testOnlyBookmarkHoverRevealsCollapsedCard),
     ("auto hide delay is one point five seconds", testAutoHideDelayIsOnePointFiveSeconds),
     ("bookmark is compact icon only", testBookmarkIsCompactIconOnly),
-    ("plan card shows minute precision clock", testPlanCardShowsMinutePrecisionClock),
+    ("plan card shows second precision prominent clock", testPlanCardShowsSecondPrecisionProminentClock),
     ("plan card deletes use fragmenting transition", testPlanCardDeletesUseFragmentingTransition),
     ("explicit show card uses manual reveal grace", testExplicitShowCardUsesManualRevealGrace),
     ("duplicate launch uses persistent show request fallback", testDuplicateLaunchUsesPersistentShowRequestFallback),
