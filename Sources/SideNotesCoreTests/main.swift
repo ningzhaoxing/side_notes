@@ -477,6 +477,53 @@ func testSideHandleHoverDoesNotUseManualRevealLatch() throws {
     try expect(!mouseEntered.contains("onActivate()"), "mouse hover should not use the manual click reveal action")
 }
 
+func testExplicitShowCardUsesManualRevealGrace() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
+    let start = try sourceSection(source, from: "func start()", to: "func showCard()")
+    let showCard = try sourceSection(source, from: "func showCard()", to: "func showEditor")
+
+    try expect(showCard.contains("cardController.show(revealedFromBookmark: true)"), "menu and duplicate-launch show actions should keep the card open long enough to use")
+    try expect(start.contains("cardController.show()"), "edge hover and startup should keep using the lightweight reveal path")
+    try expect(!start.contains("cardController.show(revealedFromBookmark: true)"), "edge hover should not use the manual reveal grace period")
+}
+
+func testDuplicateLaunchUsesPersistentShowRequestFallback() throws {
+    let mainSource = try readWorkspaceFile("Sources/SideNotesApp/main.swift")
+    let alreadyRunning = try sourceSection(mainSource, from: "catch SingleInstanceGuard.Error.alreadyRunning", to: "exit(0)")
+    let coordinatorSource = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
+    let monitor = try sourceSection(coordinatorSource, from: "private func startQuitRequestMonitor", to: "private func scheduleHide")
+    let signalSource = try readWorkspaceFile("Sources/SideNotesApp/AppRuntimeSignal.swift")
+
+    try expect(alreadyRunning.contains("AppRuntimeSignal.writeShowRequest()"), "duplicate launch should persist a show request before exiting")
+    try expect(alreadyRunning.contains("DistributedNotificationCenter.default().post"), "duplicate launch should still notify live instances immediately")
+    try expect(signalSource.contains("static func writeShowRequest()"), "runtime signals should support persistent show requests")
+    try expect(signalSource.contains("static func consumeShowRequest"), "existing instance should be able to consume a show request")
+    try expect(monitor.contains("AppRuntimeSignal.consumeShowRequest(after: launchTimestamp)"), "main instance should poll for missed duplicate-launch show requests")
+    try expect(monitor.contains("showCard()"), "show request fallback should use the explicit show path")
+}
+
+func testSingleInstanceCheckRunsBeforeApplicationCreation() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/main.swift")
+    guard
+        let guardIndex = source.range(of: "let preflightInstanceGuard")?.lowerBound,
+        let appIndex = source.range(of: "let app = NSApplication.shared")?.lowerBound
+    else {
+        throw TestFailure(description: "main should acquire the single-instance lock before creating NSApplication")
+    }
+
+    try expect(guardIndex < appIndex, "duplicate executable launches should write show requests before NSApplication can abort")
+    try expect(source.contains("AppDelegate(instanceGuard: preflightInstanceGuard)"), "the preflight lock should be retained by the app delegate")
+    try expect(source.contains("StaleInstanceTerminator.terminateAfterOwningLock()"), "the lock owner should still clean up legacy stale instances")
+}
+
+func testApplicationReopenShowsExistingCard() throws {
+    let source = try readWorkspaceFile("Sources/SideNotesApp/main.swift")
+    let reopen = try sourceSection(source, from: "func applicationShouldHandleReopen", to: "func applicationShouldTerminateAfterLastWindowClosed")
+
+    try expect(reopen.contains("coordinator?.showCard()"), "reopening an already-running app should reveal the existing plan card")
+    try expect(reopen.contains("return false"), "reopen handling should avoid default AppKit window behavior")
+}
+
 func testRenameInputsRevertAfterFailedSave() throws {
     let viewModelSource = try readWorkspaceFile("Sources/SideNotesApp/ViewModels.swift")
     let cardSource = try readWorkspaceFile("Sources/SideNotesApp/PlanCardView.swift")
@@ -626,12 +673,14 @@ func testStaleInstanceTerminatorMatchesLegacyExecutables() throws {
 func testQuitRequestRemainsBroadcastForAllInstances() throws {
     let signalSource = try readWorkspaceFile("Sources/SideNotesApp/AppRuntimeSignal.swift")
     let pendingRequest = try sourceSection(signalSource, from: "static func hasPendingQuitRequest", to: "static func clearQuitRequest")
+    let pendingRequestHelper = try sourceSection(signalSource, from: "private static func hasPendingRequest", to: "private static func showRequestURL")
     let clearRequest = try sourceSection(signalSource, from: "static func clearQuitRequest", to: "private static func quitRequestURL")
     let coordinatorSource = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
     let quitMethod = try sourceSection(coordinatorSource, from: "private func quit", to: "private func startQuitRequestMonitor")
     let monitor = try sourceSection(coordinatorSource, from: "private func startQuitRequestMonitor", to: "private func scheduleHide")
 
-    try expect(pendingRequest.contains("String(contentsOf:"), "quit monitor should read the request timestamp without consuming it")
+    try expect(pendingRequest.contains("hasPendingRequest(at: quitRequestURL()"), "quit monitor should use the shared timestamp request reader")
+    try expect(pendingRequestHelper.contains("String(contentsOf:"), "quit monitor should read the request timestamp without consuming it")
     try expect(!pendingRequest.contains("removeItem"), "one instance should not delete the quit request before other instances can see it")
     try expect(clearRequest.contains("removeItem"), "explicit cleanup should still be able to remove stale quit requests")
     try expect(quitMethod.contains("broadcast: Bool = true"), "local quits should distinguish broadcast requests from received broadcasts")
@@ -1203,6 +1252,10 @@ let tests: [(String, () throws -> Void)] = [
     ("plan card window show and bookmark are idempotent", testPlanCardWindowShowAndBookmarkAreIdempotent),
     ("expanded card gets auto-hide grace after bookmark reveal", testExpandedCardGetsAutoHideGraceAfterBookmarkReveal),
     ("side handle hover does not use manual reveal latch", testSideHandleHoverDoesNotUseManualRevealLatch),
+    ("explicit show card uses manual reveal grace", testExplicitShowCardUsesManualRevealGrace),
+    ("duplicate launch uses persistent show request fallback", testDuplicateLaunchUsesPersistentShowRequestFallback),
+    ("single instance check runs before application creation", testSingleInstanceCheckRunsBeforeApplicationCreation),
+    ("application reopen shows existing card", testApplicationReopenShowsExistingCard),
     ("rename inputs revert after failed save", testRenameInputsRevertAfterFailedSave),
     ("editor rename fields save on focus loss", testEditorRenameFieldsSaveOnFocusLoss),
     ("view model skips unchanged renames", testViewModelSkipsUnchangedRenames),

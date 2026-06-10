@@ -96,7 +96,7 @@ final class AppCoordinator: NSObject {
 
     func showCard() {
         cancelPendingHide()
-        cardController.show()
+        cardController.show(revealedFromBookmark: true)
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -150,10 +150,19 @@ final class AppCoordinator: NSObject {
     private func startQuitRequestMonitor() {
         quitRequestTimer?.invalidate()
         quitRequestTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-            guard let self, AppRuntimeSignal.hasPendingQuitRequest(after: self.launchTimestamp) else { return }
             Task { @MainActor in
-                self.quit(broadcast: false)
+                self?.handleRuntimeRequests()
             }
+        }
+    }
+
+    private func handleRuntimeRequests() {
+        if AppRuntimeSignal.hasPendingQuitRequest(after: launchTimestamp) {
+            quit(broadcast: false)
+            return
+        }
+        if AppRuntimeSignal.consumeShowRequest(after: launchTimestamp) {
+            showCard()
         }
     }
 
