@@ -37,10 +37,8 @@ final class PlanCardWindowController: NSObject {
 
     func show(revealedFromBookmark: Bool = false) {
         window.level = viewModel.settings.isPinned ? .floating : .normal
-        if !viewModel.settings.isPinned {
-            autoHideGraceUntil = Date().addingTimeInterval(revealAutoHideGraceDuration)
-        }
         if revealedFromBookmark {
+            autoHideGraceUntil = Date().addingTimeInterval(revealAutoHideGraceDuration)
             requiresMouseEntryBeforeAutoHide = true
         }
         guard !window.isVisible || isCollapsed else {

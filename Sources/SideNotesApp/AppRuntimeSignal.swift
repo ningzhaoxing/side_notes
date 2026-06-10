@@ -17,13 +17,18 @@ enum AppRuntimeSignal {
         }
     }
 
-    static func consumeQuitRequest() -> Bool {
+    static func hasPendingQuitRequest(after minimumTimestamp: TimeInterval, maxAge: TimeInterval = 5.0) -> Bool {
         let url = quitRequestURL()
-        guard FileManager.default.fileExists(atPath: url.path) else {
+        guard
+            let rawTimestamp = try? String(contentsOf: url, encoding: .utf8),
+            let timestamp = TimeInterval(rawTimestamp.trimmingCharacters(in: .whitespacesAndNewlines))
+        else {
             return false
         }
-        try? FileManager.default.removeItem(at: url)
-        return true
+        guard timestamp > minimumTimestamp else {
+            return false
+        }
+        return Date().timeIntervalSince1970 - timestamp <= maxAge
     }
 
     static func clearQuitRequest() {

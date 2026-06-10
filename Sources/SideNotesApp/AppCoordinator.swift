@@ -18,6 +18,7 @@ final class AppCoordinator: NSObject {
     private var isApplyingEditorFrame = false
     private var settingsCancellable: AnyCancellable?
     private var lastAppliedSettings: AppSettings
+    private let launchTimestamp = Date().timeIntervalSince1970
 
     init(store: PlanStore) {
         let viewModel = PlanViewModel(store: store)
@@ -120,7 +121,7 @@ final class AppCoordinator: NSObject {
     }
 
     @objc private func quitFromDistributedNotification(_ notification: Notification) {
-        quit()
+        quit(broadcast: false)
     }
 
     @objc private func showEditorFromMenu() {
@@ -131,7 +132,14 @@ final class AppCoordinator: NSObject {
         quit()
     }
 
-    private func quit() {
+    private func quit(broadcast: Bool = true) {
+        if broadcast {
+            AppRuntimeSignal.writeQuitRequest()
+            DistributedNotificationCenter.default().post(
+                name: Self.quitNotificationName,
+                object: nil
+            )
+        }
         cancelPendingHide()
         quitRequestTimer?.invalidate()
         quitRequestTimer = nil
@@ -142,9 +150,9 @@ final class AppCoordinator: NSObject {
     private func startQuitRequestMonitor() {
         quitRequestTimer?.invalidate()
         quitRequestTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-            guard AppRuntimeSignal.consumeQuitRequest() else { return }
+            guard let self, AppRuntimeSignal.hasPendingQuitRequest(after: self.launchTimestamp) else { return }
             Task { @MainActor in
-                self?.quit()
+                self.quit(broadcast: false)
             }
         }
     }

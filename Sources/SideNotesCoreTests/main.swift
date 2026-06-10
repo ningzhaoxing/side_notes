@@ -445,13 +445,15 @@ func testExpandedCardGetsAutoHideGraceAfterBookmarkReveal() throws {
     try expect(source.contains("requiresMouseEntryBeforeAutoHide"), "manual side-handle reveal should wait for mouse entry before auto-hide")
     try expect(source.contains("func show(revealedFromBookmark: Bool = false)"), "show should distinguish manual side-handle reveal from edge hover reveal")
     try expect(show.contains("if revealedFromBookmark"), "show should mark manual side-handle reveals")
+    try expect(!show.contains("if !viewModel.settings.isPinned"), "edge-hover reveal should not get the long manual auto-hide grace period")
     guard
         let graceIndex = show.range(of: "autoHideGraceUntil = Date().addingTimeInterval(revealAutoHideGraceDuration)")?.lowerBound,
+        let manualRevealIndex = show.range(of: "if revealedFromBookmark")?.lowerBound,
         let guardIndex = show.range(of: "guard !window.isVisible || isCollapsed else")?.lowerBound
     else {
         throw TestFailure(description: "show should refresh auto-hide grace before the already-visible early return")
     }
-    try expect(graceIndex < guardIndex, "show should refresh auto-hide grace before the already-visible early return")
+    try expect(manualRevealIndex < graceIndex && graceIndex < guardIndex, "show should refresh auto-hide grace only inside the manual reveal path and before the already-visible early return")
     try expect(shouldAutoHide.contains("Date() >= autoHideGraceUntil"), "auto-hide should be blocked while the reveal grace period is active")
     try expect(shouldAutoHide.contains("requiresMouseEntryBeforeAutoHide = false"), "mouse entry into the card should clear the manual reveal latch")
     try expect(shouldAutoHide.contains("guard !requiresMouseEntryBeforeAutoHide else"), "auto-hide should wait until the user has actually reached the card")
@@ -602,6 +604,23 @@ func testStaleInstanceTerminatorMatchesLegacyExecutables() throws {
     try expect(source.contains("executableURL?.lastPathComponent"), "stale instance cleanup should match legacy bare SideNotes executables")
     try expect(source.contains("bundleURL?.lastPathComponent"), "stale instance cleanup should match copied SideNotes app bundles")
     try expect(source.contains("forceTerminate()"), "stale instance cleanup should force-terminate leftover old instances")
+}
+
+func testQuitRequestRemainsBroadcastForAllInstances() throws {
+    let signalSource = try readWorkspaceFile("Sources/SideNotesApp/AppRuntimeSignal.swift")
+    let pendingRequest = try sourceSection(signalSource, from: "static func hasPendingQuitRequest", to: "static func clearQuitRequest")
+    let clearRequest = try sourceSection(signalSource, from: "static func clearQuitRequest", to: "private static func quitRequestURL")
+    let coordinatorSource = try readWorkspaceFile("Sources/SideNotesApp/AppCoordinator.swift")
+    let quitMethod = try sourceSection(coordinatorSource, from: "private func quit", to: "private func startQuitRequestMonitor")
+    let monitor = try sourceSection(coordinatorSource, from: "private func startQuitRequestMonitor", to: "private func scheduleHide")
+
+    try expect(pendingRequest.contains("String(contentsOf:"), "quit monitor should read the request timestamp without consuming it")
+    try expect(!pendingRequest.contains("removeItem"), "one instance should not delete the quit request before other instances can see it")
+    try expect(clearRequest.contains("removeItem"), "explicit cleanup should still be able to remove stale quit requests")
+    try expect(quitMethod.contains("broadcast: Bool = true"), "local quits should distinguish broadcast requests from received broadcasts")
+    try expect(quitMethod.contains("AppRuntimeSignal.writeQuitRequest()"), "local quit should write a broadcast request for other stale instances")
+    try expect(quitMethod.contains("DistributedNotificationCenter.default().post"), "local quit should also notify live instances immediately")
+    try expect(monitor.contains("hasPendingQuitRequest(after:"), "quit monitor should ignore stale requests written before this instance started")
 }
 
 func testPlanStorePersistsDailyGroupsTasksAndSettings() throws {
@@ -1176,6 +1195,7 @@ let tests: [(String, () throws -> Void)] = [
     ("pinned card fallback frame is persisted", testPinnedCardFallbackFrameIsPersisted),
     ("editor window restore uses usable visibility and persists fallback", testEditorWindowRestoreUsesUsableVisibilityAndPersistsFallback),
     ("stale instance terminator matches legacy executables", testStaleInstanceTerminatorMatchesLegacyExecutables),
+    ("quit request remains broadcast for all instances", testQuitRequestRemainsBroadcastForAllInstances),
     ("archive preserves groups, tasks, order, and completion", testArchivePreservesGroupsTasksOrderAndCompletion),
     ("archive keeps existing archives and creates a new current plan", testArchiveKeepsExistingArchivesAndCreatesANewCurrentPlan),
     ("single instance guard requires exclusive lock", testSingleInstanceGuardRequiresExclusiveLock),
